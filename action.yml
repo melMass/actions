@@ -1,0 +1,6 @@
+name: "Deploy to IPFS"
+description: "Deploys the input folder on IPFS"
+
+runs:
+  using: "node16"
+  main: "dist/index.js"

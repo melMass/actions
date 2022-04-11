@@ -1,0 +1,29 @@
+{
+  "name": "actions",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rimraf dist && ncc build src/index.js --license license.txt"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/melMass/actions.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/melMass/actions/issues"
+  },
+  "homepage": "https://github.com/melMass/actions#readme",
+  "dependencies": {
+    "@actions/core": "^1.6.0",
+    "@actions/github": "^5.0.1"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.33.3",
+    "rimraf": "^3.0.2"
+  }
+}
