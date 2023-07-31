@@ -1,14 +1,27 @@
-name: "Deploy to IPFS"
-description: "Deploys the input folder on IPFS"
-inputs:
-  path: # id of input
-    description: "Folder to upload"
-    required: true
-    default: "build"
+name: "Build Python Wheels"
+description: "Hacky way to gather the pip libraries that require being built from source"
+author: "Mel Massadian"
 
-outputs:
-  cid: # id of output
-    description: "The CID of the artifact"
+# outputs:
+#   num_squared:
+#     description: "Square of the input"
+#     # need to specify the extra `value` field for `composite` actions
+#     value: ${{ steps.get-square.outputs.num_squared }}
 runs:
-  using: "node16"
-  main: "dist/index.js"
+  using: "composite"
+  steps:
+    - name: Install Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+    - name: Install Dependencies
+      run: pip install -r requirements.txt
+      shell: bash
+    # - name: Pass Inputs to Shell
+    #   run: |
+    #     echo "INPUT_NUM=${{ inputs.num }}" >> $GITHUB_ENV
+    #   shell: bash
+    - name: Analyze & Build wheels
+      id: build-wheels
+      run: python src/main.py
+      shell: bash
