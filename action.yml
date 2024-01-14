@@ -1,0 +1,14 @@
+name: "Deploy to IPFS"
+description: "Deploys the input folder on IPFS"
+inputs:
+  path: # id of input
+    description: "Folder to upload"
+    required: true
+    default: "build"
+
+outputs:
+  cid: # id of output
+    description: "The CID of the artifact"
+runs:
+  using: "node16"
+  main: "dist/index.js"
