@@ -3,14 +3,18 @@ name: 👨🏻‍🔬 Test actions@build-python-wheels
 on: [workflow_dispatch]
 jobs:
   publish:
-    runs-on: ubuntu-latest
-    name: Package
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    name: Package on ${{ matrix.os }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Install Environment
         id: py
         uses: ./
+        # uses: melMass/actions@package-python
         with:
           python-version: 3.11
           dependencies: "numpy imageio"
@@ -24,9 +28,15 @@ jobs:
       - name: Pack Environment
         id: pack
         uses: ./
+        # uses: melMass/actions@package-python
         with:
           mode: pack
-        # uses: melMass/actions@package-python-env
-      # Use the output from the `hello` step
-      # - name: Get the CID
-      #   run: echo "The CID is ${{ steps.ipfs.outputs.cid }}"
+
+      - name: Print Outputs
+        shell: bash
+        run: |
+          echo "The full path of the zipped environment is: ${{ steps.pack.outputs.env-zip-path }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}-env
+          path: ${{ steps.pack.outputs.env-zip-path }}

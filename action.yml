@@ -18,6 +18,12 @@ inputs:
     description: 'The mode of the action'
     required: true
     default: 'install'
+
+outputs:
+  env-zip-path:
+    description: 'The full path of the zipped environment'
+    value: ${{ steps.zip-env.outputs.env-zip-path }}
+
 runs:
   using: 'composite'
   steps:
@@ -33,6 +39,7 @@ runs:
             pip install -r ${{ inputs.requirements-file }}
           fi
     - name: Zip environment
+      id: zip-env
       shell: bash
       run: |
         if [[ "$RUNNER_OS" == "Windows" ]]; then
@@ -40,5 +47,7 @@ runs:
         else
           zip -r env.zip ./env > /dev/null
         fi
+        echo "::set-output name=env-zip-path::$(pwd)/env.zip"
+
       if: ${{ inputs.mode == 'pack' }}
 
