@@ -55,16 +55,17 @@ runs:
     - name: Zip environment (Unix)
       id: zip-env-unix
       shell: bash
-      run: |
-        zip -r env.zip ./env > /dev/null
-        echo "env-zip-path=$(pwd)/env.zip" >> $GITHUB_OUTPUT
+      run: zip -r env.zip ./env > /dev/null
       if: ${{ inputs.mode == 'pack' && runner.os != 'Windows' }}
 
     - name: Zip environment (Windows)
       id: zip-env-windows
       shell: pwsh
       if: ${{ inputs.mode == 'pack' && runner.os == 'Windows' }}
-      run: |
-        7z a env.zip ./env > $null
-        echo "env-zip-path=$(Get-Location)/env.zip" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      run: 7z a env.zip ./env > $null
 
+    - name: Set Outputs
+      id: zip-env
+      shell: bash
+      run: echo "env-zip-path=$(pwd)/env.zip" >> $GITHUB_OUTPUT
+        
