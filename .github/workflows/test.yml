@@ -1,0 +1,32 @@
+name: 👨🏻‍🔬 Test actions@build-python-wheels
+
+on: [workflow_dispatch]
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    name: Package
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install Environment
+        id: py
+        uses: ./
+        with:
+          python-version: 3.11
+          dependencies: "numpy imageio"
+
+      - name: Add Something
+        shell: bash
+        run: |
+          source env/bin/activate
+          pip install websockets
+
+      - name: Pack Environment
+        id: pack
+        uses: ./
+        with:
+          mode: pack
+        # uses: melMass/actions@package-python-env
+      # Use the output from the `hello` step
+      # - name: Get the CID
+      #   run: echo "The CID is ${{ steps.ipfs.outputs.cid }}"

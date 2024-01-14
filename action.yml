@@ -1,0 +1,44 @@
+name: 'Python Environment Packaging'
+description: 'Packages a Python environment with its dependencies'
+author: "Mel Massadian"
+
+inputs:
+  python-version:
+    description: 'The version of Python to install'
+    required: false
+    default: '3.10'
+  requirements-file:
+    description: 'The path to the requirements.txt file'
+    required: false
+    default: 'requirements.txt'
+  dependencies:
+    description: 'Inline array of dependencies'
+    required: false    
+  mode:
+    description: 'The mode of the action'
+    required: true
+    default: 'install'
+runs:
+  using: 'composite'
+  steps:
+    - name: Create virtual environment and Install dependencies
+      shell: bash
+      if: ${{ inputs.mode == 'install' }}
+      run: |
+          python -m venv env
+          source env/bin/activate
+          if [ -n "${{ inputs.dependencies }}" ]; then
+            pip install ${{ inputs.dependencies }}
+          else
+            pip install -r ${{ inputs.requirements-file }}
+          fi
+    - name: Zip environment
+      shell: bash
+      run: |
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          7z a env.zip ./env > /dev/null
+        else
+          zip -r env.zip ./env > /dev/null
+        fi
+      if: ${{ inputs.mode == 'pack' }}
+
