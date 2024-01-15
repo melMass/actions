@@ -13,6 +13,7 @@ jobs:
         uses: melMass/actions@build-python-wheels
         with:
           dependencies: "Flask-Misaka==1.0.1"
+          wheels: "misaka, Flask-Misaka"
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
