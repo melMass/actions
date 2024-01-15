@@ -41,7 +41,7 @@ runs:
 
     - name: Analyze & Build wheels
       id: build-wheels
-      run: python src/main.py
+      run: python ${GITHUB_ACTION_PATH}/src/main.py
       shell: bash
 
     - name: Print wheel paths
