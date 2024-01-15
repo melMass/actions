@@ -11,6 +11,8 @@ jobs:
       - name: Build python wheels
         id: build
         uses: melMass/actions@build-python-wheels
+        with:
+          dependencies: "Flask-Misaka==1.0.1"
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
