@@ -12,28 +12,5 @@ jobs:
         id: build
         # uses: melMass/actions@build-python-wheels
         uses: ./
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
-          tag_name: ${{ github.run_number }}
-          release_name: Release ${{ github.run_number }}
-          draft: false
-          prerelease: false
-
-      - name: Upload wheel files
-        run: |
-          wheel_paths=$(python -c 'import os, json; print("\n".join(json.loads(os.getenv("WHEEL_PATHS"))))')
-          for path in $wheel_paths; do
-            echo "Uploading $path"
-            curl \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -H "Content-Type: $(file -b --mime-type $path)" \
-              --data-binary "@$path" \
-              "${{ steps.create_release.outputs.upload_url }}?name=$(basename $path)"
-          done
-        env:
-          WHEEL_PATHS: ${{ steps.build.outputs.wheel_paths }}
-        shell: bash
+          wheels: "misaka"

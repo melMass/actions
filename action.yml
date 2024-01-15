@@ -3,6 +3,9 @@ description: "Build wheels for pip libraries that require being built from sourc
 author: "Mel Massadian"
 
 inputs:
+  wheels:
+    description: "Comma separated list of wheels to build"
+    required: true
   python-version:
     description: "The version of Python to install"
     required: false
@@ -11,7 +14,7 @@ inputs:
     description: "The path to the requirements.txt file"
     required: false
   dependencies:
-    description: "Inline array of dependencies"
+    description: "Inline array of dependencies to install"
     required: false
 
 outputs:
@@ -43,11 +46,14 @@ runs:
       id: build-wheels
       run: python ${GITHUB_ACTION_PATH}/src/main.py
       shell: bash
+      env:
+        WHEELS: ${{ inputs.wheels }}
 
     - name: Print wheel paths
       run: |
-        wheel_paths="${{steps.build-wheels.outputs.wheel_paths}}"
+        IFS=$'\n' read -d '' -r -a wheel_paths <<< "${{steps.build-wheels.outputs.wheel_paths}}"
         echo -e "\e[1;32mThe paths to the built wheels are:\e[0m"
-        echo -e "\e[1;34m- $wheel_paths\e[0m"
-
+        for path in "${wheel_paths[@]}"; do
+          echo -e "\e[1;34m- $path\e[0m"
+        done
       shell: bash
