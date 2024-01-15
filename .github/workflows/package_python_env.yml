@@ -1,4 +1,4 @@
-name: 👨🏻‍🔬 Test actions@package
+name: 👨🏻‍🔬 Test actions@package-python
 
 on: [workflow_dispatch]
 jobs:
@@ -7,7 +7,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-    name: Package on ${{ matrix.os }}
+    name: Test package-python on ${{ matrix.os }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
