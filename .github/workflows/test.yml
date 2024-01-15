@@ -14,3 +14,11 @@ jobs:
         uses: ./
         with:
           wheels: "misaka"
+      # - name: Print wheel paths
+      #   run: |
+      #     IFS=$'\n' read -d '' -r -a wheel_paths <<< "${{steps.build.outputs.wheel_paths}}"
+      #     echo -e "\e[1;32mThe paths to the built wheels are:\e[0m"
+      #     for path in "${wheel_paths[@]}"; do
+      #       echo -e "\e[1;34m- $path\e[0m"
+      #     done
+      #   shell: bash
