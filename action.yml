@@ -1,27 +1,53 @@
 name: "Build Python Wheels"
-description: "Hacky way to gather the pip libraries that require being built from source"
+description: "Build wheels for pip libraries that require being built from source"
 author: "Mel Massadian"
 
-# outputs:
-#   num_squared:
-#     description: "Square of the input"
-#     # need to specify the extra `value` field for `composite` actions
-#     value: ${{ steps.get-square.outputs.num_squared }}
+inputs:
+  python-version:
+    description: "The version of Python to install"
+    required: false
+    default: "3.10"
+  requirements-file:
+    description: "The path to the requirements.txt file"
+    required: false
+  dependencies:
+    description: "Inline array of dependencies"
+    required: false
+
+outputs:
+  wheel_paths:
+    description: "JSON string of the list of wheels"
+    value: ${{ steps.build-wheels.outputs.wheel_paths }}
+
 runs:
   using: "composite"
   steps:
     - name: Install Python
       uses: actions/setup-python@v4
       with:
-        python-version: "3.10"
+        python-version: ${{ inputs.python-version }}
     - name: Install Dependencies
-      run: pip install -r requirements.txt
+      run: |
+        if [ -n "${{ inputs.dependencies }}" ]; then
+          pip install ${{ inputs.dependencies }}
+        fi
+        if [ -n "${{ inputs.requirements-file }}" ]; then
+        pip install -r ${{ inputs.requirements-file }}
+        fi
+        if [ -f requirements.txt ]; then
+        pip install -r requirements.txt
+        fi
       shell: bash
-    # - name: Pass Inputs to Shell
-    #   run: |
-    #     echo "INPUT_NUM=${{ inputs.num }}" >> $GITHUB_ENV
-    #   shell: bash
+
     - name: Analyze & Build wheels
       id: build-wheels
       run: python src/main.py
+      shell: bash
+
+    - name: Print wheel paths
+      run: |
+        wheel_paths="${{steps.build-wheels.outputs.wheel_paths}}"
+        echo -e "\e[1;32mThe paths to the built wheels are:\e[0m"
+        echo -e "\e[1;34m- $wheel_paths\e[0m"
+
       shell: bash
