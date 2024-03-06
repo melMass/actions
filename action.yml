@@ -7,7 +7,7 @@ inputs:
     description: "Comma separated list of wheels to build"
     required: true
   python-version:
-    description: "The version of Python to install"
+    description: "The version of Python to target"
     required: false
     default: "3.10"
   requirements-file:
