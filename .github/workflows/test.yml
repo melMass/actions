@@ -1,0 +1,17 @@
+name: 👨🏻‍🔬 Test actions@nukit
+
+on: [workflow_dispatch]
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    name: Nukit simple demo
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: nukit
+        id: build
+        # uses: melMass/actions@nukit
+        uses: ./
+        with:
+          script_content: |
+            print $env.MTB_BUILD

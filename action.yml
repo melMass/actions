@@ -1,0 +1,14 @@
+name: "Run NuShell Script from File"
+description: "Executes a NuShell script from a specified file with predefined helpers"
+
+inputs:
+  script_content:
+    description: "NuShell script provided as a multiline string"
+    required: false
+  script_path:
+    description: "Path to the NuShell script file"
+    required: false
+
+runs:
+  using: "docker"
+  image: "Dockerfile"
