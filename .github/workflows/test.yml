@@ -6,16 +6,25 @@ on:
     branches:
       - "nukit"
 jobs:
-  publish:
+  test:
     runs-on: ubuntu-latest
     name: Nukit simple demo
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: nukit
-        id: build
+      - name: nukit A
+        id: A
         # uses: melMass/actions@nukit
         uses: ./
         with:
-          script_content: |
-            print $env.MTB_BUILD
+          script: |
+            $nu.os-info | to-github
+            {NEXT: "some-data"} | to-github
+      - name: nukit B
+        id: B
+        # uses: melMass/actions@nukit
+        uses: ./
+        with:
+          script: |
+            print $env.NEXT
+            print $env.kernel_version

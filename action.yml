@@ -1,14 +1,102 @@
-name: "Run NuShell Script from File"
-description: "Executes a NuShell script from a specified file with predefined helpers"
-
+name: "Nukit"
+description: "A reusable action that installs and runs Nushell code."
 inputs:
-  script_content:
-    description: "NuShell script provided as a multiline string"
+  repo-token:
+    description: "GitHub token with repo access"
     required: false
-  script_path:
-    description: "Path to the NuShell script file"
+    default: ${{ github.token }}
+  script:
+    description: "NuShell script to execute"
     required: false
+  skip_modules:
+    description: "Skip the loading of the custom modules"
+    required: false
+    default: "false"
+  script-file:
+    description: "Path to a NuShell script file to execute (not used for now)"
+    required: false
+  nu-version:
+    description: "Version of NuShell to install (defaults to latest)"
+    required: false
+    default: "*"
 
 runs:
-  using: "docker"
-  image: "Dockerfile"
+  using: "composite"
+  steps:
+    - name: Check if NuShell is installed
+      id: check-nu
+      run: |
+        if command -v nu &> /dev/null; then
+          echo "nu_installed=true" >> $GITHUB_OUTPUT
+        else
+          echo "nu_installed=false" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+
+    - name: Install NuShell
+      if: steps.check-nu.outputs.nu_installed == 'false'
+      uses: hustcer/setup-nu@main
+      with:
+        version: ${{ inputs.nu-version }}
+
+    # - uses: taiki-e/install-action@v2
+    #   with:
+    #     tool: cargo-binstall
+    #
+    # - name: Install Cargo Binaries
+    #   run: |
+    #     def install_missing [command:string] {
+    #       if (which $command | is-empty) {
+    #         print $"(ansi yellow)Installing ($command)...(ansi reset)"
+    #         cargo-binstall --no-confirm $command
+    #       } else {
+    #         print $"(ansi green)($command) already installed.(ansi reset)"
+    #         echo "$1 is already installed."
+    #       }
+    #     }
+    #     install_missing exa
+    #     # install_missing ripgrep
+    #     # install_missing coreutils
+    #     # install_missing fd-find
+    #     "/root/.cargo/bin" | save -a $env.GITHUB_PATH
+    #   shell: nu {0}
+    #
+    - name: Execute NuShell script
+      run: |
+        let script = ($env.INPUT_SCRIPT? | default "")
+        let script_file = $env.INPUT_SCRIPT-FILE
+        let skip_modules = ($env.INPUT_SKIP_MODULES == "true")
+
+        if not $skip_modules {
+          $"overlay use ($env.GITHUB_ACTION_PATH | path join toolkit.nu)\n" | save -a run_script.nu
+        }
+        $script | save -a run_script.nu
+
+        if not ($script_file | is-empty) {
+          $script_file | save -a run_script.nu
+        }
+
+        nu --commands "source run_script.nu"
+        # nu --commands "open run_script.nu | nu-highlight"
+      shell: nu {0}
+
+    # - name: Execute NuShell script
+    #   run: |
+    #
+    #     if [ "${{ inputs.skip_modules }}" = "false" ]; then
+    #      echo "overlay use $GITHUB_ACTION_PATH/toolkit.nu" > run_script.nu
+    #     fi
+    #
+    #     if [ -n "${{ inputs.script }}" ]; then
+    #       echo "${{ inputs.script }}" >> run_script.nu
+    #     fi
+    #
+    #     if [ -n "${{ inputs.script-file }}" ]; then
+    #       cat "${{ inputs.script-file }}" >> run_script.nu
+    #     fi
+    #     nu --commands "print \$env"
+    #
+    #     # nu --commands "source run_script.nu"
+    #     nu --commands "open run_script.nu | nu-highlight"
+    #
+    #   shell: bash
