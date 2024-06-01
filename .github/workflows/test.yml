@@ -1,6 +1,10 @@
 name: 👨🏻‍🔬 Test actions@nukit
 
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "nukit"
 jobs:
   publish:
     runs-on: ubuntu-latest
