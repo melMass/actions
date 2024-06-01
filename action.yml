@@ -1,0 +1,15 @@
+name: "Sync Fork"
+description: "Automatically syncs a fork with its upstream repository and manages the pull request."
+inputs:
+  repo-token:
+    description: "GitHub token with repo access"
+    required: true
+  feature-branch:
+    description: "The feature branch in the fork to update"
+    required: true
+  upstream-branch:
+    description: "The upstream branch to sync from"
+    required: true
+runs:
+  using: "node20"
+  main: "index.js"
