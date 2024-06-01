@@ -64,6 +64,7 @@ runs:
 
     - name: Execute NuShell script
       run: |
+        print $env
         let script = ($env.INPUT_SCRIPT? | default "")
         let script_file = $env.INPUT_SCRIPT-FILE?
         let skip_modules = ($env.INPUT_SKIP_MODULES == "true")
