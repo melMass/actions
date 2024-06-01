@@ -64,7 +64,6 @@ runs:
 
     - name: Execute NuShell script
       run: |
-        print $env
         let script = ($env.INPUT_SCRIPT? | default "")
         let script_file = $env.INPUT_SCRIPT-FILE?
         let skip_modules = ($env.INPUT_SKIP_MODULES == "true")
@@ -80,6 +79,12 @@ runs:
 
         nu --commands "source run_script.nu"
         # nu --commands "open run_script.nu | nu-highlight"
+      env:
+        # NOTE: in composite actions this is not provided
+        # the following mimics the standard naming (input -> env)
+        INPUT_SCRIPT: ${{ inputs.script }}
+        INPUT_SCRIPT-FILE: ${{ inputs.script-file }}
+        INPUT_SKIP_MODULES: ${{ inputs.skip_modules }}
       shell: nu {0}
 
     # - name: Execute NuShell script
