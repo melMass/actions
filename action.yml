@@ -61,10 +61,11 @@ runs:
     #     "/root/.cargo/bin" | save -a $env.GITHUB_PATH
     #   shell: nu {0}
     #
+
     - name: Execute NuShell script
       run: |
         let script = ($env.INPUT_SCRIPT? | default "")
-        let script_file = $env.INPUT_SCRIPT-FILE
+        let script_file = $env.INPUT_SCRIPT-FILE?
         let skip_modules = ($env.INPUT_SKIP_MODULES == "true")
 
         if not $skip_modules {
