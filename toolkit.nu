@@ -1,5 +1,6 @@
 export-env {
   let build_root = ($nu.home-path | path join ".mtb_build")
+  $env.REPOS_ROOT = ($nu.home-path | path join "dev")
   let os = $nu.os-info
   $env.opts = {
     name: ($env.GITHUB_REPOSITORY | path basename),
@@ -12,11 +13,29 @@ export-env {
 
   $env.MTB_BUILD_ROOT = $build_root
   mkdir $build_root
+  mkdir $env.REPOS_ROOT
 }
 
 # get a build root by name
-export def get-root [name:string] {
+export def get-build-root [name:string] {
   $env.MTB_BUILD_ROOT | path join $name
+}
+
+export def "git grab" [url] {
+  cd $env.REPOS_ROOT
+  let repo_name = ($url | path basename)
+
+  if ($repo_name | path exists) {
+    cd $repo_name
+    git fetch
+    git pull
+    git submodule update --init --recursive
+    return $env.PWD
+  } else {
+    git clone --recurse-submodules $url
+    cd $repo_name
+    return $env.PWD
+  }
 }
 
 

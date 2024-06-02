@@ -18,8 +18,9 @@ jobs:
         uses: ./
         with:
           script: |
+            let root = (git grab https://github.com/AcademySoftwareFoundation/OpenImageIO)
             $nu.os-info | to-github
-            {NEXT: "some-data"} | to-github
+            {NEXT: "some-data", OIIO_ROOT:$root} | to-github
       - name: nukit B
         id: B
         # uses: melMass/actions@nukit
@@ -28,3 +29,4 @@ jobs:
           script: |
             print $env.NEXT
             print $env.kernel_version
+            tree $env.OIIO_ROOT
