@@ -18,15 +18,17 @@ jobs:
         uses: ./
         with:
           script: |
-            let root = (git grab https://github.com/AcademySoftwareFoundation/OpenImageIO)
+            print $env.opts
             $nu.os-info | to-github
-            {NEXT: "some-data", OIIO_ROOT:$root} | to-github
+            {NEXT: "some-data" SEMVER:"2.5.6"} | to-github
+            {NUKIT_VERSION: "2.1.1" NUKIT_BRANCH: "nightly"} | to-github --output
       - name: nukit B
         id: B
         # uses: melMass/actions@nukit
         uses: ./
         with:
           script: |
+            print $env.SEMVER
             print $env.NEXT
             print $env.kernel_version
-            tree $env.OIIO_ROOT
+            print (open $env.GITHUB_OUTPUT)
