@@ -32,3 +32,8 @@ jobs:
             print $env.NEXT
             print $env.kernel_version
             print (open $env.GITHUB_OUTPUT)
+
+      - name: Read in bash
+        shell: bash
+        run: |
+          echo "${{steps.A.outputs.NUKIT_BRANCH}}"
