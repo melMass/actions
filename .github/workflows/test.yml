@@ -37,3 +37,4 @@ jobs:
         shell: bash
         run: |
           echo "${{steps.A.outputs.NUKIT_BRANCH}}"
+          cat $GITHUB_OUTPUT
