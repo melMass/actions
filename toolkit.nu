@@ -59,7 +59,12 @@ export def to-github [
   let inrec = $in
 
   let res = ($inrec | columns | zip ($inrec | values) | each {|i|
-    $"($i.0)=($i.1)"} | to text) 
+    if ($i.1 | describe) == "string" {
+      $'($i.0)="($i.1)"'
+    } else { 
+      $"($i.0)=($i.1)"}
+    } | to text
+  ) 
 
   if $output {
     $res | save -a $env.GITHUB_OUTPUT
