@@ -41,7 +41,7 @@ runs:
         
     - uses: taiki-e/install-action@v2
       with:
-        tool: exa,ripgrep,coreutils,fd-find
+        tool: ripgrep,coreutils,fd-find
     
     - name: Execute NuShell script
       run: |
