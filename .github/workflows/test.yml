@@ -7,7 +7,7 @@ on:
       - "nukit"
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     name: Nukit simple demo
     steps:
       - name: Checkout code
@@ -32,6 +32,7 @@ jobs:
             print $env.NEXT
             print $env.kernel_version
             print (open $env.GITHUB_OUTPUT)
+            xcodebuild -showsdks
 
       - name: Read in bash
         shell: bash
