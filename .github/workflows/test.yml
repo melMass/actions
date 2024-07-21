@@ -34,7 +34,7 @@ jobs:
             print (open $env.GITHUB_OUTPUT)
             xcodebuild -showsdks
             xcode-select --print-path
-            fd /Library/Developer/CommandLineTools/SDKs string.h
+            fd string.h /Library/Developer/CommandLineTools/SDKs
 
       - name: Read in bash
         shell: bash
