@@ -33,6 +33,8 @@ jobs:
             print $env.kernel_version
             print (open $env.GITHUB_OUTPUT)
             xcodebuild -showsdks
+            xcode-select --print-path
+            fd /Library/Developer/CommandLineTools/SDKs string.h
 
       - name: Read in bash
         shell: bash
