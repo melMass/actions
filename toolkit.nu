@@ -38,17 +38,19 @@ export def "git grab" [url] {
   }
 }
 
+export def compress [to_compress, archive_name?] {
+  let name = $archive_name | default ($to_compress | path parse | get stem)
+  if $env.opts.windows {
+    7z a -mfb=258 -tzip $name $to_compress
+  } else  {
+    ^zip -r -9 -y -m $name $to_compress
+  }
+}
 
 export def zip-release [folder:path,release_name:string] {
   let folder_name = ($folder | path basename)
   let name = $"($folder_name)-($env.opts.prefix)-($env.opts.name)-($release_name).zip"
-
-  if $env.opts.windows {
-    7z a -mfb=258 -tzip $name $folder 
-  } else  {
-    ^zip -r -9 -y -m $name $folder 
-  }
-
+  compress $folder_name $name
   return $name
 }
 
