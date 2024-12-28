@@ -63,21 +63,23 @@ export def zip-release [folder: path, release_name: string] {
 
 # easily send a nu record to the github env or step output
 export def to-github [
+  --prefix: string
   --output (-o) #  use step output instead of env
 ] {
   let inrec = $in
+  let prefix = ($prefix | default "")
 
   let res = (
     $inrec | columns | zip ($inrec | values)
     | each {|i|
-      $"($i.0)=($i.1)"
+      $"($prefix)($i.0)=($i.1)"
     }
   )
 
   if $output {
-    $res | each {|line| $line | save -a $env.GITHUB_OUTPUT}
+    $res | to text | save -a $env.GITHUB_OUTPUT
   } else {
-    $res | each {|line| $line | save -a $env.GITHUB_ENV}
+    $res | to text | save -a $env.GITHUB_ENV
   }
 }
 
