@@ -64,6 +64,7 @@ runs:
         }
 
         nu --commands "source run_script.nu"
+        rm run_script.nu
         # nu --commands "open run_script.nu | nu-highlight"
       env:
         # NOTE: in composite actions this is not provided
