@@ -12,6 +12,10 @@ inputs:
     description: "Skip the loading of the custom modules"
     required: false
     default: "false"
+  skip_extras:
+    description: "Skip intall of the extra tools"
+    required: false
+    default: "false"
   script-file:
     description: "Path to a NuShell script file to execute (not used for now)"
     required: false
@@ -38,11 +42,12 @@ runs:
       uses: hustcer/setup-nu@main
       with:
         version: ${{ inputs.nu-version }}
-        
+
     - uses: taiki-e/install-action@v2
+      if: ${{ inputs.skip_extras == 'false' }}
       with:
         tool: ripgrep,coreutils,fd-find
-    
+
     - name: Execute NuShell script
       run: |
         let script = ($env.INPUT_SCRIPT? | default "")
