@@ -56,7 +56,7 @@ export def compress [to_compress, archive_name?] {
 
 export def zip-release [folder: path, release_name: string] {
   let folder_name = ($folder | path basename)
-  let name = $"($folder_name)-($env.opts.prefix)-($env.opts.name)-($release_name).zip"
+  let name = $"($folder_name)-($env.opts.prefix)-($release_name).zip"
   compress $folder_name $name
   return $name
 }
