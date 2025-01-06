@@ -83,6 +83,35 @@ export def to-github [
   }
 }
 
+export def delete-release [name: string] {
+  let res = (gh release delete $name --cleanup-tag --yes | complete)
+  if $res.exit_code > 0 {
+    print $"(ansi yellow_italic)Tag ($name) doesn't exist yet?(ansi reset) - (ansi red_bold)($res.stderr)(ansi reset)"
+    return false
+  }
+  print $"(ansi green_bold)Tag ($name) deleted.(ansi reset)"
+  return true
+}
+
+export def publish-release [name: string, --canary, ...release_files] {
+  let existing = (gh release list --json name | from json | get name)
+  if $name not-in $existing {
+    if $canary {
+      let created = (gh release create $name ...$release_files --prerelease --latest=false | complete)
+      if $created.exit_code > 0 {
+        gh release upload $name ...$release_files --clobber
+      }
+    } else {
+      let created = (gh release create $name ...$release_files | complete)
+      if $created.exit_code > 0 {
+        gh release upload $name ...$release_files --clobber
+      }
+    }
+  } else {
+    gh release upload $name ...$release_files --clobber
+  }
+}
+
 # clone or update a git repo
 export def clone-or-update [dest: path, url: string] {
   if not ($dest | path exists) {
