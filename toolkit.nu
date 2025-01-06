@@ -93,7 +93,7 @@ export def delete-release [name: string] {
   return true
 }
 
-export def publish-release [name: string, --canary, ...release_files] {
+export def publish-release [name: string, --body: string, --canary, ...release_files] {
   let existing = (gh release list --json name | from json | get name)
   if $name not-in $existing {
     if $canary {
@@ -109,6 +109,9 @@ export def publish-release [name: string, --canary, ...release_files] {
     }
   } else {
     gh release upload $name ...$release_files --clobber
+  }
+  if ($body | is-not-empty) {
+    gh release edit $name --notes $body
   }
 }
 
