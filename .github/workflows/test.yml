@@ -27,11 +27,35 @@ jobs:
         id: free-space
         uses: ./
         
-      - name: Show results
-        run: |
-          echo "Space freed: ${{ steps.free-space.outputs.space-freed-gb }} GB"
-          echo "Initial space: ${{ steps.free-space.outputs.initial-space }}"
-          echo "Final space: ${{ steps.free-space.outputs.final-space }}"
-          
       - name: Verify disk space
         run: df -h /
+        
+      - name: Create workflow summary
+        uses: melmass/actions@summary
+        with:
+          content: |
+            # 🧹 Disk Space Cleanup Results
+            
+            ## 📊 Space Information
+            
+            | Metric | Value |
+            | --- | --- |
+            | 💾 Initial Space | ${initial_space} |
+            | 💾 Final Space | ${final_space} |
+            | ✨ Space Freed | **${space_freed_gb} GB** (${space_freed_mb} MB) |
+            
+            ## 📋 System Information
+            
+            ```
+            ${disk_info}
+            ```
+            
+            > This test was run on a GitHub-hosted Ubuntu runner using the free-space action.
+          variables: |
+            {
+              "initial_space": "${{ steps.free-space.outputs.initial-space }}",
+              "final_space": "${{ steps.free-space.outputs.final-space }}",
+              "space_freed_gb": "${{ steps.free-space.outputs.space-freed-gb }}",
+              "space_freed_mb": "${{ steps.free-space.outputs.space-freed-mb }}",
+              "disk_info": "$(df -h /)"
+            }
