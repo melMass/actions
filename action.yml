@@ -64,6 +64,7 @@ runs:
   using: "composite"
   steps:
     - name: Free up disk space
+      id: free-space-script
       shell: bash
       run: ${{ github.action_path }}/free-space.sh
       env:
@@ -79,3 +80,14 @@ runs:
         INPUT_REMOVE_POWERSHELL: ${{ inputs.remove-powershell }}
         INPUT_CUSTOM_PACKAGES: ${{ inputs.custom-packages }}
         INPUT_CUSTOM_DIRECTORIES: ${{ inputs.custom-directories }}
+    
+    # Set outputs from the script to the action's outputs
+    - name: Set action outputs
+      shell: bash
+      run: |
+        echo "space-freed-kb=${{ steps.free-space-script.outputs.space-freed-kb }}" >> $GITHUB_OUTPUT
+        echo "space-freed-mb=${{ steps.free-space-script.outputs.space-freed-mb }}" >> $GITHUB_OUTPUT
+        echo "space-freed-gb=${{ steps.free-space-script.outputs.space-freed-gb }}" >> $GITHUB_OUTPUT
+        echo "initial-space=${{ steps.free-space-script.outputs.initial-space }}" >> $GITHUB_OUTPUT
+        echo "final-space=${{ steps.free-space-script.outputs.final-space }}" >> $GITHUB_OUTPUT
+      id: outputs
