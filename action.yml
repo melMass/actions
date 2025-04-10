@@ -33,6 +33,10 @@ inputs:
     description: "Enable strict host key checking (set to 'false' to disable)"
     required: false
     default: "false"
+  debug:
+    description: "Enable verbose debugging output"
+    required: false
+    default: "false"
   post-commands:
     description: "Commands to execute on the remote server after upload (semicolon-separated)"
     required: false

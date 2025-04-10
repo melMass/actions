@@ -43,28 +43,24 @@ echo "::endgroup::"
 # Create a temporary file for transfer statistics
 STATS_FILE=$(mktemp)
 
-# Set up SSH options based on strict host key checking setting
-SSH_OPTIONS="-p $PORT"
-if [ "$STRICT_HOST_KEY_CHECKING" = "false" ]; then
-  echo "Strict host key checking is disabled"
-  SSH_OPTIONS="$SSH_OPTIONS -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+# Set up SSH key with proper permissions
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/id_rsa
+
+# Set up SSH options with maximum compatibility
+SSH_OPTIONS="-p $PORT -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=60 -o TCPKeepAlive=yes"
+
+# Add debugging if needed
+if [ "${INPUT_DEBUG:-false}" = "true" ]; then
+  SSH_OPTIONS="$SSH_OPTIONS -v"
 fi
 
-# Add connection timeout to avoid hanging
-SSH_OPTIONS="$SSH_OPTIONS -o ConnectTimeout=10"
+echo "SSH options: $SSH_OPTIONS"
 
-# Test SSH connection before attempting transfer
-echo "::group::Testing SSH connection"
-echo "Testing SSH connection to $HOST:$PORT..."
-ssh $SSH_OPTIONS -o BatchMode=yes -T $USERNAME@$HOST 2>&1 || {
-  CONNECTION_STATUS=$?
-  echo "SSH connection test failed with exit code: $CONNECTION_STATUS"
-  echo "Trying with verbose output for debugging:"
-  ssh $SSH_OPTIONS -v -o BatchMode=yes -T $USERNAME@$HOST 2>&1 || true
-  
-  # Continue anyway, since we're using StrictHostKeyChecking=no for the actual transfer
-  echo "Will attempt transfer despite connection test failure"
-}
+# Ensure the destination directory exists
+echo "::group::Ensuring destination directory exists"
+mkdir -p ~/.ssh/controlmasters
+ssh $SSH_OPTIONS -o ControlMaster=auto -o ControlPath=~/.ssh/controlmasters/%r@%h:%p $USERNAME@$HOST "mkdir -p \$(dirname $DESTINATION)" || echo "Could not create destination directory, will try to continue anyway"
 echo "::endgroup::"
 
 # Upload files
@@ -85,32 +81,25 @@ if [ "$USE_RSYNC" = "true" ]; then
     fi
   fi
   
-  # Build rsync command with stats output
-  # Add timeout and connection retries
-  RSYNC_CMD="rsync -avz --stats --timeout=60 --contimeout=10 $OPTIONS -e 'ssh $SSH_OPTIONS' $SOURCE $USERNAME@$HOST:$DESTINATION"
+  # Build rsync command with simplified options for maximum compatibility
+  RSYNC_CMD="rsync -avz --stats $OPTIONS -e 'ssh $SSH_OPTIONS' $SOURCE $USERNAME@$HOST:$DESTINATION"
   echo "Running: $RSYNC_CMD"
   
-  # Run rsync with retries and capture output
-  MAX_RETRIES=3
-  RETRY_COUNT=0
-  SUCCESS=false
-  
-  while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SUCCESS" = "false" ]; do
-    echo "Attempt $(($RETRY_COUNT + 1)) of $MAX_RETRIES"
-    eval "$RSYNC_CMD" | tee "$STATS_FILE"
-    
-    if [ ${PIPESTATUS[0]} -eq 0 ]; then
-      SUCCESS=true
+  # Run rsync with simple retry logic
+  for i in {1..3}; do
+    echo "Attempt $i of 3"
+    eval "$RSYNC_CMD" | tee "$STATS_FILE" && {
       echo "Transfer successful!"
-    else
-      RETRY_COUNT=$(($RETRY_COUNT + 1))
-      if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-        echo "Transfer failed, retrying in 5 seconds..."
-        sleep 5
+      break
+    } || {
+      echo "Transfer attempt $i failed"
+      if [ $i -lt 3 ]; then
+        echo "Retrying in 3 seconds..."
+        sleep 3
       else
         echo "All retry attempts failed."
       fi
-    fi
+    }
   done
   
   # Extract statistics
@@ -124,37 +113,28 @@ if [ "$USE_RSYNC" = "true" ]; then
 else
   echo "::group::Uploading files with scp"
   
-  # Build scp command with SSH options
-  SCP_OPTIONS="-P $PORT"
-  if [ "$STRICT_HOST_KEY_CHECKING" = "false" ]; then
-    SCP_OPTIONS="$SCP_OPTIONS -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-  fi
+  # Build scp command with simplified options
+  SCP_OPTIONS="-P $PORT -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15"
   
   # Build scp command
   SCP_CMD="scp $SCP_OPTIONS $OPTIONS -r $SOURCE $USERNAME@$HOST:$DESTINATION"
   echo "Running: $SCP_CMD"
   
-  # Run scp with retries
-  MAX_RETRIES=3
-  RETRY_COUNT=0
-  SUCCESS=false
-  
-  while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SUCCESS" = "false" ]; do
-    echo "Attempt $(($RETRY_COUNT + 1)) of $MAX_RETRIES"
-    eval "$SCP_CMD"
-    
-    if [ $? -eq 0 ]; then
-      SUCCESS=true
+  # Run scp with simple retry logic
+  for i in {1..3}; do
+    echo "Attempt $i of 3"
+    eval "$SCP_CMD" && {
       echo "Transfer successful!"
-    else
-      RETRY_COUNT=$(($RETRY_COUNT + 1))
-      if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-        echo "Transfer failed, retrying in 5 seconds..."
-        sleep 5
+      break
+    } || {
+      echo "Transfer attempt $i failed"
+      if [ $i -lt 3 ]; then
+        echo "Retrying in 3 seconds..."
+        sleep 3
       else
         echo "All retry attempts failed."
       fi
-    fi
+    }
   done
   
   # Since scp doesn't provide statistics, we'll estimate
@@ -167,39 +147,32 @@ fi
 # Run post-upload commands if specified
 if [ -n "$POST_COMMANDS" ]; then
   echo "::group::Running post-upload commands"
+  echo "Commands to execute: $POST_COMMANDS"
   
-  # Replace semicolons with newlines for better logging
-  COMMANDS=$(echo "$POST_COMMANDS" | tr ';' '\n')
+  # Create a script file with all commands
+  REMOTE_SCRIPT="/tmp/remote_commands_$$.sh"
+  echo "#!/bin/bash" > "$REMOTE_SCRIPT"
+  echo "set -e" >> "$REMOTE_SCRIPT"
+  echo "$POST_COMMANDS" >> "$REMOTE_SCRIPT"
+  chmod +x "$REMOTE_SCRIPT"
   
-  # Execute commands on remote server with error handling
-  for CMD in $COMMANDS; do
-    echo "Running command: $CMD"
+  # Copy script to remote server
+  echo "Copying command script to remote server"
+  scp $SSH_OPTIONS "$REMOTE_SCRIPT" "$USERNAME@$HOST:/tmp/remote_commands.sh" || {
+    echo "Failed to copy script to remote server"
+    cat "$REMOTE_SCRIPT"
+    echo "Will try to run commands directly"
     
-    # Try command with timeout to prevent hanging
-    MAX_RETRIES=2
-    RETRY_COUNT=0
-    CMD_SUCCESS=false
-    
-    while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$CMD_SUCCESS" = "false" ]; do
-      echo "Command attempt $(($RETRY_COUNT + 1)) of $MAX_RETRIES"
-      
-      # Use timeout to prevent hanging
-      timeout 30 ssh $SSH_OPTIONS "$USERNAME@$HOST" "$CMD" && CMD_SUCCESS=true
-      
-      if [ "$CMD_SUCCESS" = "true" ]; then
-        echo "Command executed successfully!"
-      else
-        RETRY_COUNT=$(($RETRY_COUNT + 1))
-        if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-          echo "Command failed, retrying in 3 seconds..."
-          sleep 3
-        else
-          echo "Failed to execute command after $MAX_RETRIES attempts: $CMD"
-          echo "Continuing with next command..."
-        fi
-      fi
-    done
-  done
+    # Fallback to direct command execution
+    ssh $SSH_OPTIONS "$USERNAME@$HOST" "$POST_COMMANDS" || echo "Warning: Post-commands execution failed"
+  }
+  
+  # Execute script on remote server
+  echo "Executing command script on remote server"
+  ssh $SSH_OPTIONS "$USERNAME@$HOST" "bash /tmp/remote_commands.sh" || echo "Warning: Script execution failed"
+  
+  # Clean up
+  rm -f "$REMOTE_SCRIPT"
   
   echo "::endgroup::"
 fi
