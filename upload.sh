@@ -12,7 +12,8 @@ DESTINATION="${INPUT_DESTINATION}"
 USE_RSYNC="${INPUT_RSYNC:-true}"
 OPTIONS="${INPUT_OPTIONS}"
 POST_COMMANDS="${INPUT_POST_COMMANDS}"
-STRICT_HOST_KEY_CHECKING="${INPUT_STRICT_HOST_KEY_CHECKING:-true}"
+STRICT_HOST_KEY_CHECKING="${INPUT_STRICT_HOST_KEY_CHECKING:-false}"
+PRIVATE_KEY="${INPUT_PRIVATE_KEY}"
 
 # Set default status
 echo "status=failure" > "$GITHUB_OUTPUT"
@@ -30,6 +31,7 @@ error_exit() {
 [ -z "$USERNAME" ] && error_exit "Username is required"
 [ -z "$SOURCE" ] && error_exit "Source path is required"
 [ -z "$DESTINATION" ] && error_exit "Destination path is required"
+[ -z "$PRIVATE_KEY" ] && error_exit "Private key is required"
 
 echo "::group::Upload Configuration"
 echo "Host: $HOST"
@@ -43,21 +45,93 @@ echo "::endgroup::"
 # Create a temporary file for transfer statistics
 STATS_FILE=$(mktemp)
 
-# Set up SSH key with proper permissions
+# Set up SSH key
+echo "::group::Setting up SSH key"
+echo "Setting up SSH keys..."
+
+# Create SSH directory with proper permissions
+mkdir -p ~/.ssh
 chmod 700 ~/.ssh
+
+# Write private key with proper error handling
+echo "Writing private key..."
+# Ensure the key is properly formatted with newlines
+echo "$PRIVATE_KEY" | sed 's/\\n/\n/g' > ~/.ssh/id_rsa
+
+# Check if the key looks valid
+if ! grep -q "BEGIN" ~/.ssh/id_rsa; then
+  echo "WARNING: Private key doesn't contain 'BEGIN' line, it might be malformed"
+  echo "First few characters of the key:"
+  head -c 20 ~/.ssh/id_rsa
+  error_exit "Invalid SSH key format"
+fi
+
+# Set proper permissions
+echo "Setting permissions..."
 chmod 600 ~/.ssh/id_rsa
 
+# Add host to known hosts
+echo "Adding host to known_hosts..."
+echo "Host: $HOST, Port: $PORT"
+
+# Try to resolve the hostname first
+echo "Resolving hostname..."
+getent hosts $HOST || echo "Warning: Could not resolve hostname"
+
+# Try with timeout to avoid hanging
+echo "Running ssh-keyscan..."
+timeout 10 ssh-keyscan -p $PORT -H $HOST > ~/.ssh/known_hosts || echo "Warning: ssh-keyscan timed out"
+
+# Check if known_hosts was created and has content
+if [ ! -s ~/.ssh/known_hosts ]; then
+  echo "Warning: known_hosts file is empty, adding a manual entry"
+  # Add a manual entry to bypass host checking
+  echo "$HOST ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==" >> ~/.ssh/known_hosts
+fi
+
+cat ~/.ssh/known_hosts
+
+# Verify setup
+echo "Verifying SSH setup..."
+ls -la ~/.ssh
+echo "::endgroup::"
+
 # Set up SSH options with maximum compatibility
-SSH_OPTIONS="-p $PORT -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=60 -o TCPKeepAlive=yes"
+SSH_OPTIONS="-p $PORT -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=60 -o TCPKeepAlive=yes"
+
+# Handle strict host key checking
+if [ "$STRICT_HOST_KEY_CHECKING" = "true" ]; then
+  echo "Enabling strict host key checking"
+  SSH_OPTIONS="$SSH_OPTIONS -o StrictHostKeyChecking=yes"
+else
+  echo "Disabling strict host key checking"
+  SSH_OPTIONS="$SSH_OPTIONS -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+fi
 
 # Add debugging if needed
 if [ "${INPUT_DEBUG:-false}" = "true" ]; then
+  echo "Enabling verbose SSH debugging"
   SSH_OPTIONS="$SSH_OPTIONS -v"
 fi
 
 echo "SSH options: $SSH_OPTIONS"
 
-# Check if host is reachable
+# Test SSH connection before proceeding
+echo "::group::Testing SSH connection"
+echo "Testing SSH connection to $USERNAME@$HOST:$PORT..."
+
+# Try to connect with a simple command
+if ! ssh $SSH_OPTIONS $USERNAME@$HOST "echo 'Connection successful'" 2>/dev/null; then
+  echo "::error::Failed to establish SSH connection to $HOST"
+  echo "This could be due to authentication issues, firewall rules, or incorrect credentials."
+  echo "Please verify your SSH key and connection settings."
+  exit 1
+fi
+
+echo "SSH connection successful!"
+echo "::endgroup::"
+
+# Check if host is reachable first (faster check before attempting SSH)
 echo "::group::Checking if host is reachable"
 echo "Testing connection to $HOST:$PORT..."
 
@@ -199,29 +273,100 @@ if [ -n "$POST_COMMANDS" ]; then
   echo "::group::Running post-upload commands"
   echo "Commands to execute: $POST_COMMANDS"
   
-  # Create a script file with all commands
+  # Create a script file with all commands and better error handling
   REMOTE_SCRIPT="/tmp/remote_commands_$$.sh"
-  echo "#!/bin/bash" > "$REMOTE_SCRIPT"
-  echo "set -e" >> "$REMOTE_SCRIPT"
-  echo "$POST_COMMANDS" >> "$REMOTE_SCRIPT"
+  cat > "$REMOTE_SCRIPT" << EOF
+#!/bin/bash
+set -e
+
+# Function to log errors
+log_error() {
+  echo "ERROR: \$1" >&2
+  exit 1
+}
+
+# Change to destination directory
+cd "$DESTINATION" || log_error "Failed to change directory to $DESTINATION"
+
+echo "Executing commands in \$(pwd)..."
+
+# Run the commands
+{
+$POST_COMMANDS
+} || {
+  EXIT_CODE=\$?
+  log_error "Command failed with exit code \$EXIT_CODE"
+}
+
+echo "Commands completed successfully"
+EOF
+
   chmod +x "$REMOTE_SCRIPT"
   
-  # Copy script to remote server
+  # Prepare SCP options with the same settings as SSH
+  SCP_OPTIONS="-P $PORT"
+  
+  # Add the same SSH options to SCP
+  if [[ "$SSH_OPTIONS" =~ StrictHostKeyChecking=no ]]; then
+    SCP_OPTIONS="$SCP_OPTIONS -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+  fi
+  
+  if [[ "$SSH_OPTIONS" =~ ConnectTimeout=([0-9]+) ]]; then
+    SCP_OPTIONS="$SCP_OPTIONS -o ConnectTimeout=${BASH_REMATCH[1]}"
+  fi
+  
+  if [ "${INPUT_DEBUG:-false}" = "true" ]; then
+    SCP_OPTIONS="$SCP_OPTIONS -v"
+  fi
+  
+  echo "SCP options: $SCP_OPTIONS"
+  
+  # Copy script to remote server with retry logic
   echo "Copying command script to remote server"
-  scp -P $PORT -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 "$REMOTE_SCRIPT" "$USERNAME@$HOST:/tmp/remote_commands.sh" || {
-    echo "Failed to copy script to remote server"
-    cat "$REMOTE_SCRIPT"
-    echo "Will try to run commands directly"
+  SCP_SUCCESS=false
+  for i in {1..3}; do
+    echo "SCP attempt $i of 3"
+    if scp $SCP_OPTIONS "$REMOTE_SCRIPT" "$USERNAME@$HOST:/tmp/remote_commands.sh"; then
+      echo "Script copied successfully"
+      SCP_SUCCESS=true
+      break
+    else
+      echo "SCP attempt $i failed"
+      if [ $i -lt 3 ]; then
+        echo "Retrying in 3 seconds..."
+        sleep 3
+      else
+        echo "All SCP retry attempts failed."
+      fi
+    fi
+  done
+  
+  # Execute commands based on script copy success
+  if [ "$SCP_SUCCESS" = "true" ]; then
+    # Execute script on remote server
+    echo "Executing command script on remote server"
+    if ssh $SSH_OPTIONS "$USERNAME@$HOST" "bash /tmp/remote_commands.sh"; then
+      echo "Remote script executed successfully"
+    else
+      SSH_EXIT_CODE=$?
+      echo "::warning::Script execution failed with exit code $SSH_EXIT_CODE"
+      echo "This may indicate an issue with the post-commands or the remote environment."
+      # Don't exit here, we still want to report the transfer as successful
+    fi
     
+    # Clean up remote script
+    ssh $SSH_OPTIONS "$USERNAME@$HOST" "rm -f /tmp/remote_commands.sh" || echo "Failed to remove remote script"
+  else
+    echo "::warning::Failed to copy script to remote server. Trying direct command execution..."
     # Fallback to direct command execution
-    ssh $SSH_OPTIONS "$USERNAME@$HOST" "$POST_COMMANDS" || echo "Warning: Post-commands execution failed"
-  }
+    if ssh $SSH_OPTIONS "$USERNAME@$HOST" "cd $DESTINATION && { $POST_COMMANDS; }"; then
+      echo "Direct command execution successful"
+    else
+      echo "::warning::Direct command execution failed"
+    fi
+  fi
   
-  # Execute script on remote server
-  echo "Executing command script on remote server"
-  ssh $SSH_OPTIONS "$USERNAME@$HOST" "bash /tmp/remote_commands.sh" || echo "Warning: Script execution failed"
-  
-  # Clean up
+  # Clean up local script
   rm -f "$REMOTE_SCRIPT"
   
   echo "::endgroup::"

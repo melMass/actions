@@ -45,57 +45,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Set up SSH key
-      shell: bash
-      run: |
-        # Debug SSH directory
-        echo "Setting up SSH keys..."
-        ls -la ~ || true
-        
-        # Create SSH directory with proper permissions
-        mkdir -p ~/.ssh
-        chmod 700 ~/.ssh
-        
-        # Write private key with proper error handling
-        echo "Writing private key..."
-        # Ensure the key is properly formatted with newlines
-        echo "${{ inputs.private-key }}" | sed 's/\\n/\n/g' > ~/.ssh/id_rsa
-        # Check if the key looks valid
-        if ! grep -q "BEGIN" ~/.ssh/id_rsa; then
-          echo "WARNING: Private key doesn't contain 'BEGIN' line, it might be malformed"
-          echo "First few characters of the key:"
-          head -c 20 ~/.ssh/id_rsa
-        fi
-        
-        # Set proper permissions
-        echo "Setting permissions..."
-        chmod 600 ~/.ssh/id_rsa
-        
-        # Add host to known hosts
-        echo "Adding host to known_hosts..."
-        echo "Host: ${{ inputs.host }}, Port: ${{ inputs.port }}"
-        
-        # Try to resolve the hostname first
-        echo "Resolving hostname..."
-        getent hosts ${{ inputs.host }} || echo "Warning: Could not resolve hostname"
-        
-        # Try with timeout to avoid hanging
-        echo "Running ssh-keyscan..."
-        timeout 10 ssh-keyscan -p ${{ inputs.port }} -H ${{ inputs.host }} > ~/.ssh/known_hosts || echo "Warning: ssh-keyscan timed out"
-        
-        # Check if known_hosts was created and has content
-        if [ ! -s ~/.ssh/known_hosts ]; then
-          echo "Warning: known_hosts file is empty, adding a manual entry"
-          # Add a manual entry to bypass host checking
-          echo "${{ inputs.host }} ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==" >> ~/.ssh/known_hosts
-        fi
-        
-        cat ~/.ssh/known_hosts
-        
-        # Verify setup
-        echo "Verifying SSH setup..."
-        ls -la ~/.ssh
-      
     - name: Upload files
       id: upload
       shell: bash
@@ -108,8 +57,12 @@ runs:
         INPUT_DESTINATION: ${{ inputs.destination }}
         INPUT_RSYNC: ${{ inputs.rsync }}
         INPUT_OPTIONS: ${{ inputs.options }}
+        INPUT_STRICT_HOST_KEY_CHECKING: ${{ inputs.strict-host-key-checking }}
+        INPUT_DEBUG: ${{ inputs.debug }}
         INPUT_POST_COMMANDS: ${{ inputs.post-commands }}
-
+        INPUT_PRIVATE_KEY: ${{ inputs.private-key }}
+        GITHUB_OUTPUT: ${{ github.output }}
+    
     - name: Clean up SSH key
       if: always()
       shell: bash
