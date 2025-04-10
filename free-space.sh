@@ -163,12 +163,42 @@ else
   SAVED_GB="0.00"
 fi
 
-# Set outputs
+# Debug GitHub environment
+echo "DEBUG: GITHUB_OUTPUT environment variable: $GITHUB_OUTPUT"
+if [ -z "$GITHUB_OUTPUT" ]; then
+  echo "ERROR: GITHUB_OUTPUT is not set!"
+  # Fallback to the old way of setting outputs for older GitHub Actions runners
+  GITHUB_OUTPUT="${GITHUB_OUTPUT:-${GITHUB_ENV}}"
+  echo "Using fallback: $GITHUB_OUTPUT"
+fi
+
+# Verify the file exists and is writable
+if [ ! -f "$GITHUB_OUTPUT" ]; then
+  echo "ERROR: GITHUB_OUTPUT file does not exist: $GITHUB_OUTPUT"
+else
+  echo "DEBUG: GITHUB_OUTPUT file exists"
+  ls -la "$GITHUB_OUTPUT"
+fi
+
+# Set outputs with debugging
+echo "DEBUG: Setting output space-freed-kb=$SAVED_KB"
 echo "space-freed-kb=$SAVED_KB" >> $GITHUB_OUTPUT
+
+echo "DEBUG: Setting output space-freed-mb=$SAVED_MB"
 echo "space-freed-mb=$SAVED_MB" >> $GITHUB_OUTPUT
+
+echo "DEBUG: Setting output space-freed-gb=$SAVED_GB"
 echo "space-freed-gb=$SAVED_GB" >> $GITHUB_OUTPUT
+
+echo "DEBUG: Setting output initial-space=$INITIAL_SPACE"
 echo "initial-space=$INITIAL_SPACE" >> $GITHUB_OUTPUT
+
+echo "DEBUG: Setting output final-space=$FINAL_SPACE"
 echo "final-space=$FINAL_SPACE" >> $GITHUB_OUTPUT
+
+# Verify outputs were written
+echo "DEBUG: Contents of GITHUB_OUTPUT after setting values:"
+cat "$GITHUB_OUTPUT" || echo "Could not read GITHUB_OUTPUT file"
 
 # Print summary
 echo "=============================================================================="

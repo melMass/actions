@@ -30,6 +30,33 @@ jobs:
       - name: Verify disk space
         run: df -h /
         
+      - name: Debug outputs
+        run: |
+          echo "DEBUG: Checking free-space action outputs"
+          echo "initial-space: '${{ steps.free-space.outputs.initial-space }}'"
+          echo "final-space: '${{ steps.free-space.outputs.final-space }}'"
+          echo "space-freed-kb: '${{ steps.free-space.outputs.space-freed-kb }}'"
+          echo "space-freed-mb: '${{ steps.free-space.outputs.space-freed-mb }}'"
+          echo "space-freed-gb: '${{ steps.free-space.outputs.space-freed-gb }}'"
+          
+          # Check if outputs are empty
+          if [ -z "${{ steps.free-space.outputs.initial-space }}" ]; then
+            echo "WARNING: initial-space is empty"
+          fi
+          if [ -z "${{ steps.free-space.outputs.final-space }}" ]; then
+            echo "WARNING: final-space is empty"
+          fi
+          if [ -z "${{ steps.free-space.outputs.space-freed-gb }}" ]; then
+            echo "WARNING: space-freed-gb is empty"
+          fi
+          if [ -z "${{ steps.free-space.outputs.space-freed-mb }}" ]; then
+            echo "WARNING: space-freed-mb is empty"
+          fi
+          
+          # Debug GITHUB_OUTPUT environment variable
+          echo "GITHUB_OUTPUT content:"
+          cat $GITHUB_OUTPUT || echo "Could not read GITHUB_OUTPUT"
+        
       - name: Create workflow summary
         uses: melmass/actions@summary
         with:
@@ -51,3 +78,13 @@ jobs:
               "space_freed_gb": "${{ steps.free-space.outputs.space-freed-gb }}",
               "space_freed_mb": "${{ steps.free-space.outputs.space-freed-mb }}"
             }
+            
+      - name: Debug summary variables
+        run: |
+          echo "DEBUG: Summary variables JSON:"
+          echo '{
+            "initial_space": "${{ steps.free-space.outputs.initial-space }}",
+            "final_space": "${{ steps.free-space.outputs.final-space }}",
+            "space_freed_gb": "${{ steps.free-space.outputs.space-freed-gb }}",
+            "space_freed_mb": "${{ steps.free-space.outputs.space-freed-mb }}"
+          }'
