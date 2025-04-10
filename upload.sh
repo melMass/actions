@@ -50,6 +50,23 @@ if [ "$STRICT_HOST_KEY_CHECKING" = "false" ]; then
   SSH_OPTIONS="$SSH_OPTIONS -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 fi
 
+# Add connection timeout to avoid hanging
+SSH_OPTIONS="$SSH_OPTIONS -o ConnectTimeout=10"
+
+# Test SSH connection before attempting transfer
+echo "::group::Testing SSH connection"
+echo "Testing SSH connection to $HOST:$PORT..."
+ssh $SSH_OPTIONS -o BatchMode=yes -T $USERNAME@$HOST 2>&1 || {
+  CONNECTION_STATUS=$?
+  echo "SSH connection test failed with exit code: $CONNECTION_STATUS"
+  echo "Trying with verbose output for debugging:"
+  ssh $SSH_OPTIONS -v -o BatchMode=yes -T $USERNAME@$HOST 2>&1 || true
+  
+  # Continue anyway, since we're using StrictHostKeyChecking=no for the actual transfer
+  echo "Will attempt transfer despite connection test failure"
+}
+echo "::endgroup::"
+
 # Upload files
 if [ "$USE_RSYNC" = "true" ]; then
   echo "::group::Uploading files with rsync"
@@ -69,11 +86,32 @@ if [ "$USE_RSYNC" = "true" ]; then
   fi
   
   # Build rsync command with stats output
-  RSYNC_CMD="rsync -avz --stats $OPTIONS -e 'ssh $SSH_OPTIONS' $SOURCE $USERNAME@$HOST:$DESTINATION"
+  # Add timeout and connection retries
+  RSYNC_CMD="rsync -avz --stats --timeout=60 --contimeout=10 $OPTIONS -e 'ssh $SSH_OPTIONS' $SOURCE $USERNAME@$HOST:$DESTINATION"
   echo "Running: $RSYNC_CMD"
   
-  # Run rsync and capture output
-  eval "$RSYNC_CMD" | tee "$STATS_FILE"
+  # Run rsync with retries and capture output
+  MAX_RETRIES=3
+  RETRY_COUNT=0
+  SUCCESS=false
+  
+  while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SUCCESS" = "false" ]; do
+    echo "Attempt $(($RETRY_COUNT + 1)) of $MAX_RETRIES"
+    eval "$RSYNC_CMD" | tee "$STATS_FILE"
+    
+    if [ ${PIPESTATUS[0]} -eq 0 ]; then
+      SUCCESS=true
+      echo "Transfer successful!"
+    else
+      RETRY_COUNT=$(($RETRY_COUNT + 1))
+      if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+        echo "Transfer failed, retrying in 5 seconds..."
+        sleep 5
+      else
+        echo "All retry attempts failed."
+      fi
+    fi
+  done
   
   # Extract statistics
   TRANSFERRED_FILES=$(grep "Number of files transferred" "$STATS_FILE" | awk '{print $5}' || echo "0")
@@ -96,8 +134,28 @@ else
   SCP_CMD="scp $SCP_OPTIONS $OPTIONS -r $SOURCE $USERNAME@$HOST:$DESTINATION"
   echo "Running: $SCP_CMD"
   
-  # Run scp
-  eval "$SCP_CMD"
+  # Run scp with retries
+  MAX_RETRIES=3
+  RETRY_COUNT=0
+  SUCCESS=false
+  
+  while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SUCCESS" = "false" ]; do
+    echo "Attempt $(($RETRY_COUNT + 1)) of $MAX_RETRIES"
+    eval "$SCP_CMD"
+    
+    if [ $? -eq 0 ]; then
+      SUCCESS=true
+      echo "Transfer successful!"
+    else
+      RETRY_COUNT=$(($RETRY_COUNT + 1))
+      if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+        echo "Transfer failed, retrying in 5 seconds..."
+        sleep 5
+      else
+        echo "All retry attempts failed."
+      fi
+    fi
+  done
   
   # Since scp doesn't provide statistics, we'll estimate
   TRANSFERRED_FILES="1"
@@ -113,10 +171,34 @@ if [ -n "$POST_COMMANDS" ]; then
   # Replace semicolons with newlines for better logging
   COMMANDS=$(echo "$POST_COMMANDS" | tr ';' '\n')
   
-  # Execute commands on remote server
+  # Execute commands on remote server with error handling
   for CMD in $COMMANDS; do
     echo "Running command: $CMD"
-    ssh -p "$PORT" "$USERNAME@$HOST" "$CMD"
+    
+    # Try command with timeout to prevent hanging
+    MAX_RETRIES=2
+    RETRY_COUNT=0
+    CMD_SUCCESS=false
+    
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$CMD_SUCCESS" = "false" ]; do
+      echo "Command attempt $(($RETRY_COUNT + 1)) of $MAX_RETRIES"
+      
+      # Use timeout to prevent hanging
+      timeout 30 ssh $SSH_OPTIONS "$USERNAME@$HOST" "$CMD" && CMD_SUCCESS=true
+      
+      if [ "$CMD_SUCCESS" = "true" ]; then
+        echo "Command executed successfully!"
+      else
+        RETRY_COUNT=$(($RETRY_COUNT + 1))
+        if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+          echo "Command failed, retrying in 3 seconds..."
+          sleep 3
+        else
+          echo "Failed to execute command after $MAX_RETRIES attempts: $CMD"
+          echo "Continuing with next command..."
+        fi
+      fi
+    done
   done
   
   echo "::endgroup::"

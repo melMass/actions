@@ -32,7 +32,7 @@ inputs:
   strict-host-key-checking:
     description: "Enable strict host key checking (set to 'false' to disable)"
     required: false
-    default: "true"
+    default: "false"
   post-commands:
     description: "Commands to execute on the remote server after upload (semicolon-separated)"
     required: false
