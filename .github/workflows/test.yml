@@ -24,6 +24,10 @@ jobs:
       - name: Build action
         run: npm run build
         
+      - name: Get current date
+        id: date
+        run: echo "date=$(date -u)" >> $GITHUB_OUTPUT
+        
       - name: Basic summary example
         uses: ./
         with:
@@ -36,26 +40,33 @@ jobs:
             
             | Metric | Value |
             | --- | --- |
-            | Repository | ${{ github.repository }} |
-            | Branch | ${{ github.ref_name }} |
-            | Commit | `${{ github.sha }}` |
+            | Repository | ${repository} |
+            | Branch | ${branch} |
+            | Commit | `${commit}` |
             
             ✅ Action test completed!
+          variables: |
+            {
+              "repository": "melMass/actions",
+              "branch": "summary",
+              "commit": "HEAD"
+            }
             
       - name: Template example
         uses: ./
         with:
           template: deployment
-          variables: '{
-            "repository": "${{ github.repository }}",
-            "branch": "${{ github.ref_name }}",
-            "commit": "${{ github.sha }}",
-            "date": "${{ github.event.head_commit.timestamp || '' }}",
-            "author": "${{ github.event.head_commit.author.name || github.actor }}",
-            "message": "${{ github.event.head_commit.message || '' }}",
-            "url": "https://example.com/deployment",
-            "timestamp": "${{ steps.date.outputs.date || '' }}"
-          }'
+          variables: |
+            {
+              "repository": "melMass/actions",
+              "branch": "summary",
+              "commit": "HEAD",
+              "date": "2025-04-10",
+              "author": "melMass",
+              "message": "Test commit message",
+              "url": "https://example.com/deployment",
+              "timestamp": "2025-04-10T02:00:00Z"
+            }
           append: "true"
           
       - name: Conditional sections example
@@ -85,10 +96,11 @@ jobs:
             
             No errors or warnings were found.
             #endif
-          variables: '{
-            "hasErrors": false,
-            "hasWarnings": true,
-            "errors": "This would show error details if there were any.",
-            "warnings": "- Warning: This is a sample warning message.\n- Warning: Another sample warning."
-          }'
+          variables: |
+            {
+              "hasErrors": false,
+              "hasWarnings": true,
+              "errors": "This would show error details if there were any.",
+              "warnings": "- Warning: This is a sample warning message.\n- Warning: Another sample warning."
+            }
           append: "true"
