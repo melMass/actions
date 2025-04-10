@@ -49,5 +49,5 @@ jobs:
               "initial_space": "${{ steps.free-space.outputs.initial-space }}",
               "final_space": "${{ steps.free-space.outputs.final-space }}",
               "space_freed_gb": "${{ steps.free-space.outputs.space-freed-gb }}",
-              "space_freed_mb": "${{ steps.free-space.outputs.space-freed-mb }}",
+              "space_freed_mb": "${{ steps.free-space.outputs.space-freed-mb }}"
             }

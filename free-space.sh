@@ -11,14 +11,9 @@ INITIAL_SPACE=$(df -h / | grep -v Filesystem | awk '{print $4}')
 INITIAL_SPACE_KB=$(df -k / | grep -v Filesystem | awk '{print $4}')
 echo "Available space: $INITIAL_SPACE"
 
-# List largest packages for information (run in background)
-echo "Listing 100 largest packages (in background)"
-{
-  dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100 > /tmp/largest_packages.txt || echo "Could not list packages" > /tmp/largest_packages.txt
-  echo "\nLargest packages:" 
-  cat /tmp/largest_packages.txt
-} &
-PACKAGE_LISTING_PID=$!
+# List largest packages for information
+echo "Listing 100 largest packages"
+dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100 || echo "Could not list packages"
 
 # Define package groups to remove based on inputs
 PACKAGES_TO_CHECK=()
@@ -95,15 +90,10 @@ if [ ${#PKGS_TO_REMOVE[@]} -gt 0 ]; then
   sudo apt-get remove -y ${PKGS_TO_REMOVE[@]} || echo "Some packages could not be removed"
 fi
 
-# Clean up - run these in parallel
+# Clean up
 echo "Running cleanup operations"
-{
-  sudo apt-get autoremove -y
-} &
-{
-  sudo apt-get clean
-} &
-wait
+sudo apt-get autoremove -y
+sudo apt-get clean
 
 # Define directories to remove based on inputs
 DIRECTORIES=()
@@ -139,38 +129,16 @@ if [ -n "$INPUT_CUSTOM_DIRECTORIES" ]; then
   done
 fi
 
-# Remove directories in parallel
+# Remove directories
 echo "Removing large directories"
-remove_dir() {
-  local dir="$1"
+for dir in "${DIRECTORIES[@]}"; do
   if [ -d "$dir" ]; then
     echo "Removing directory: $dir"
     sudo rm -rf "$dir"
-    return 0
   else
     echo "Directory does not exist: $dir"
-    return 1
   fi
-}
-
-# Use background processes with a maximum of 5 concurrent jobs
-MAX_JOBS=5
-active_jobs=0
-
-for dir in "${DIRECTORIES[@]}"; do
-  # Wait if we've reached the maximum number of concurrent jobs
-  if [ $active_jobs -ge $MAX_JOBS ]; then
-    wait -n
-    active_jobs=$((active_jobs - 1))
-  fi
-  
-  # Start a new background job
-  remove_dir "$dir" &
-  active_jobs=$((active_jobs + 1))
 done
-
-# Wait for all remaining jobs to complete
-wait
 
 # Record final disk space
 echo "Final disk space:"
@@ -178,11 +146,7 @@ FINAL_SPACE=$(df -h / | grep -v Filesystem | awk '{print $4}')
 FINAL_SPACE_KB=$(df -k / | grep -v Filesystem | awk '{print $4}')
 echo "Available space: $FINAL_SPACE"
 
-# Wait for package listing to complete if it's still running
-if ps -p $PACKAGE_LISTING_PID > /dev/null 2>&1; then
-  echo "Waiting for package listing to complete..."
-  wait $PACKAGE_LISTING_PID
-fi
+# Package listing is now done synchronously, no need to wait
 
 # Calculate space saved
 echo "Calculating space saved..."
