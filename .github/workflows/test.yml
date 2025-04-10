@@ -33,29 +33,28 @@ jobs:
       - name: Debug outputs
         run: |
           echo "DEBUG: Checking free-space action outputs"
+          echo "Using outputs:"
           echo "initial-space: '${{ steps.free-space.outputs.initial-space }}'"
           echo "final-space: '${{ steps.free-space.outputs.final-space }}'"
           echo "space-freed-kb: '${{ steps.free-space.outputs.space-freed-kb }}'"
           echo "space-freed-mb: '${{ steps.free-space.outputs.space-freed-mb }}'"
           echo "space-freed-gb: '${{ steps.free-space.outputs.space-freed-gb }}'"
           
-          # Check if outputs are empty
-          if [ -z "${{ steps.free-space.outputs.initial-space }}" ]; then
-            echo "WARNING: initial-space is empty"
-          fi
-          if [ -z "${{ steps.free-space.outputs.final-space }}" ]; then
-            echo "WARNING: final-space is empty"
-          fi
-          if [ -z "${{ steps.free-space.outputs.space-freed-gb }}" ]; then
-            echo "WARNING: space-freed-gb is empty"
-          fi
-          if [ -z "${{ steps.free-space.outputs.space-freed-mb }}" ]; then
-            echo "WARNING: space-freed-mb is empty"
+          echo "\nUsing environment variables:"
+          echo "INITIAL_SPACE: '$INITIAL_SPACE'"
+          echo "FINAL_SPACE: '$FINAL_SPACE'"
+          echo "SPACE_FREED_KB: '$SPACE_FREED_KB'"
+          echo "SPACE_FREED_MB: '$SPACE_FREED_MB'"
+          echo "SPACE_FREED_GB: '$SPACE_FREED_GB'"
+          
+          # Check if outputs are empty but env vars are set
+          if [ -z "${{ steps.free-space.outputs.initial-space }}" ] && [ ! -z "$INITIAL_SPACE" ]; then
+            echo "NOTE: Using environment variables instead of outputs"
           fi
           
-          # Debug GITHUB_OUTPUT environment variable
-          echo "GITHUB_OUTPUT content:"
-          cat $GITHUB_OUTPUT || echo "Could not read GITHUB_OUTPUT"
+          # Debug environment variables
+          echo "\nAll environment variables:"
+          env | sort
         
       - name: Create workflow summary
         uses: melmass/actions@summary
