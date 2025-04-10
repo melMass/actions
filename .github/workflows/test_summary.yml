@@ -10,7 +10,7 @@ on:
       - summary
 
 jobs:
-  test:
+  test_summary:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     steps:
