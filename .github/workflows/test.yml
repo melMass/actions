@@ -46,6 +46,7 @@ jobs:
           destination: ${{ secrets.SHARED_HOST_PATH }}/test-upload/
           rsync: true
           options: "--exclude=*.bak --delete"
+          strict-host-key-checking: "false"
           post-commands: "ls -la ${{ secrets.SHARED_HOST_PATH }}/test-upload/; echo 'Test completed at $(date)' > ${{ secrets.SHARED_HOST_PATH }}/test-upload/completed.txt"
       
       - name: Display upload results

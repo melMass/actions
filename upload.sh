@@ -12,6 +12,7 @@ DESTINATION="${INPUT_DESTINATION}"
 USE_RSYNC="${INPUT_RSYNC:-true}"
 OPTIONS="${INPUT_OPTIONS}"
 POST_COMMANDS="${INPUT_POST_COMMANDS}"
+STRICT_HOST_KEY_CHECKING="${INPUT_STRICT_HOST_KEY_CHECKING:-true}"
 
 # Set default status
 echo "status=failure" > "$GITHUB_OUTPUT"
@@ -42,6 +43,13 @@ echo "::endgroup::"
 # Create a temporary file for transfer statistics
 STATS_FILE=$(mktemp)
 
+# Set up SSH options based on strict host key checking setting
+SSH_OPTIONS="-p $PORT"
+if [ "$STRICT_HOST_KEY_CHECKING" = "false" ]; then
+  echo "Strict host key checking is disabled"
+  SSH_OPTIONS="$SSH_OPTIONS -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+fi
+
 # Upload files
 if [ "$USE_RSYNC" = "true" ]; then
   echo "::group::Uploading files with rsync"
@@ -61,15 +69,15 @@ if [ "$USE_RSYNC" = "true" ]; then
   fi
   
   # Build rsync command with stats output
-  RSYNC_CMD="rsync -avz --stats $OPTIONS -e 'ssh -p $PORT' $SOURCE $USERNAME@$HOST:$DESTINATION"
+  RSYNC_CMD="rsync -avz --stats $OPTIONS -e 'ssh $SSH_OPTIONS' $SOURCE $USERNAME@$HOST:$DESTINATION"
   echo "Running: $RSYNC_CMD"
   
   # Run rsync and capture output
   eval "$RSYNC_CMD" | tee "$STATS_FILE"
   
   # Extract statistics
-  TRANSFERRED_FILES=$(grep "Number of files transferred" "$STATS_FILE" | awk '{print $5}')
-  TRANSFERRED_BYTES=$(grep "Total transferred file size" "$STATS_FILE" | awk '{print $5}')
+  TRANSFERRED_FILES=$(grep "Number of files transferred" "$STATS_FILE" | awk '{print $5}' || echo "0")
+  TRANSFERRED_BYTES=$(grep "Total transferred file size" "$STATS_FILE" | awk '{print $5}' || echo "0")
   
   echo "Files transferred: $TRANSFERRED_FILES"
   echo "Bytes transferred: $TRANSFERRED_BYTES"
@@ -78,8 +86,14 @@ if [ "$USE_RSYNC" = "true" ]; then
 else
   echo "::group::Uploading files with scp"
   
+  # Build scp command with SSH options
+  SCP_OPTIONS="-P $PORT"
+  if [ "$STRICT_HOST_KEY_CHECKING" = "false" ]; then
+    SCP_OPTIONS="$SCP_OPTIONS -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+  fi
+  
   # Build scp command
-  SCP_CMD="scp -P $PORT $OPTIONS -r $SOURCE $USERNAME@$HOST:$DESTINATION"
+  SCP_CMD="scp $SCP_OPTIONS $OPTIONS -r $SOURCE $USERNAME@$HOST:$DESTINATION"
   echo "Running: $SCP_CMD"
   
   # Run scp
