@@ -1,15 +1,21 @@
 name: "Sync Fork"
-description: "Automatically syncs a fork with its upstream repository and manages the pull request."
+description: "Automatically syncs branches between repositories and manages the pull request process."
 inputs:
   repo-token:
     description: "GitHub token with repo access"
     required: true
   feature-branch:
-    description: "The feature branch in the fork to update"
+    description: "The branch you want to update"
     required: true
   upstream-branch:
     description: "The upstream branch to sync from"
     required: true
+  upstream-repo:
+    description: "The upstream repository in format 'owner/repo'. If not provided, uses the upstream of the fork or creates a PR between branches in the same repo."
+    required: false
+  base-branch:
+    description: "The base branch for the PR. If not provided, uses the feature-branch (for syncing forks) or main/master (for branch PRs)."
+    required: false
 runs:
   using: "node20"
   main: "index.js"

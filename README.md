@@ -1,33 +1,44 @@
 # @melmass/sync-fork
 
-This GitHub Action automatically syncs a fork with its upstream repository and manages the pull request process. It's designed to keep your fork up-to-date with minimal manual intervention.
+This GitHub Action automatically syncs branches between repositories and manages the pull request process. It's designed for two main use cases:
+
+1. **Fork Synchronization**: Keep your fork up-to-date with its upstream repository
+2. **Branch PRs**: Create and maintain pull requests between branches in the same repository
 
 ## How It Works
 
-1. **Syncs with Upstream**: Uses GitHub's API to merge upstream changes into your specified branch
-2. **Manages Pull Requests**: 
-   - If a PR already exists for the branch, it adds a comment with the update information
-   - If no PR exists, it creates a new PR to track the changes
+### Mode 1: Fork Synchronization
+When used without the `upstream-repo` parameter:
+1. **Syncs with Upstream**: Uses GitHub's `mergeUpstream` API to merge changes from the upstream repository into your fork
+2. **Manages Pull Requests**: Updates existing PRs or creates new ones to track changes
 
-This is particularly useful for:
+### Mode 2: Branch PRs
+When used with the `upstream-repo` parameter or `base-branch` parameter:
+1. **Syncs Branches**: Updates your feature branch with changes from another repository or branch
+2. **Creates/Updates PRs**: Maintains pull requests between branches (e.g., dev → main)
+
+This action is particularly useful for:
 - Maintaining forks of actively developed repositories
-- Ensuring your feature branches stay in sync with upstream changes
-- Automating the tedious process of keeping forks updated
+- Automating the creation of PRs from development branches to main
+- Keeping feature branches in sync with the main branch
+- Setting up automated workflows between repositories
 
 ## Inputs
 
 | Input | Description | Required | Default |
 | --- | --- | --- | --- |
 | `repo-token` | GitHub token with repository access | Yes | - |
-| `feature-branch` | The branch in your fork that you want to update | Yes | - |
-| `upstream-branch` | The upstream branch to sync from | Yes | - |
+| `feature-branch` | The branch you want to update | Yes | - |
+| `upstream-branch` | The branch to sync from | Yes | - |
+| `upstream-repo` | The upstream repository in format 'owner/repo' | No | Uses the repository's upstream if it's a fork |
+| `base-branch` | The base branch for the PR | No | Same as feature-branch (for forks) or repo default branch (for branch PRs) |
 
 ## Example Usage
 
-### Basic Usage
+### Mode 1: Fork Synchronization
 
 ```yml
-name: Sync Fork
+name: Sync Fork with Upstream
 
 on:
   schedule:
@@ -49,10 +60,66 @@ jobs:
           upstream-branch: "main"
 ```
 
-### Multiple Branches
+### Mode 2: Branch PRs (Same Repository)
 
 ```yml
-name: Sync Fork Branches
+name: Create PR from Dev to Main
+
+on:
+  push:
+    branches:
+      - dev
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at midnight
+  workflow_dispatch:
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Create/Update PR from dev to main
+        uses: melMass/actions@sync-fork
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          feature-branch: "dev"      # Source branch
+          base-branch: "main"        # Target branch for PR
+          upstream-branch: "dev"     # Same as feature-branch in this case
+```
+
+### Mode 2: Sync from External Repository
+
+```yml
+name: Sync from External Repository
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at midnight
+  workflow_dispatch:
+
+jobs:
+  sync-from-external:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Sync from external repository
+        uses: melMass/actions@sync-fork
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          feature-branch: "imported-feature"   # Local branch to update
+          upstream-repo: "otherorg/repo"       # External repository
+          upstream-branch: "feature"           # Branch in external repository
+          base-branch: "main"                  # Create PR against this branch
+```
+
+### Multiple Branch Syncs
+
+```yml
+name: Sync Multiple Branches
 
 on:
   schedule:
@@ -66,7 +133,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         
-      - name: Sync main branch
+      - name: Sync fork main branch
         uses: melMass/actions@sync-fork
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -79,12 +146,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         
-      - name: Sync develop branch
+      - name: Create PR from develop to main
         uses: melMass/actions@sync-fork
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           feature-branch: "develop"
           upstream-branch: "develop"
+          base-branch: "main"  # Creates PR from develop to main
 ```
 
 ## Technical Details
