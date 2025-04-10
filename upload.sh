@@ -57,6 +57,34 @@ fi
 
 echo "SSH options: $SSH_OPTIONS"
 
+# Check if host is reachable
+echo "::group::Checking if host is reachable"
+echo "Testing connection to $HOST:$PORT..."
+
+# Ensure netcat is installed
+if ! command -v nc &> /dev/null; then
+  echo "netcat is not installed. Installing..."
+  if command -v apt-get &> /dev/null; then
+    sudo apt-get update && sudo apt-get install -y netcat
+  elif command -v yum &> /dev/null; then
+    sudo yum install -y nc
+  elif command -v brew &> /dev/null; then
+    brew install netcat
+  else
+    echo "Warning: Could not install netcat. Skipping host reachability check."
+  fi
+fi
+
+if command -v nc &> /dev/null && ! timeout 15 nc -z -w 5 $HOST $PORT 2>/dev/null; then
+  echo "::error::Host $HOST is not reachable on port $PORT"
+  echo "This could be due to network issues, firewall rules, or the host being down."
+  echo "Please check your network connection and host configuration."
+  exit 1
+fi
+
+echo "Host $HOST is reachable on port $PORT"
+echo "::endgroup::"
+
 # Ensure the destination directory exists
 echo "::group::Ensuring destination directory exists"
 mkdir -p ~/.ssh/controlmasters
@@ -85,22 +113,33 @@ if [ "$USE_RSYNC" = "true" ]; then
   RSYNC_CMD="rsync -avz --stats $OPTIONS -e 'ssh $SSH_OPTIONS' $SOURCE $USERNAME@$HOST:$DESTINATION"
   echo "Running: $RSYNC_CMD"
   
-  # Run rsync with simple retry logic
+  # Run rsync with simple retry logic and proper error handling
+  TRANSFER_SUCCESS=false
   for i in {1..3}; do
     echo "Attempt $i of 3"
-    eval "$RSYNC_CMD" | tee "$STATS_FILE" && {
+    eval "$RSYNC_CMD" | tee "$STATS_FILE"
+    RSYNC_EXIT_CODE=${PIPESTATUS[0]}
+    
+    if [ $RSYNC_EXIT_CODE -eq 0 ]; then
       echo "Transfer successful!"
+      TRANSFER_SUCCESS=true
       break
-    } || {
-      echo "Transfer attempt $i failed"
+    else
+      echo "Transfer attempt $i failed with exit code $RSYNC_EXIT_CODE"
       if [ $i -lt 3 ]; then
         echo "Retrying in 3 seconds..."
         sleep 3
       else
         echo "All retry attempts failed."
       fi
-    }
+    fi
   done
+  
+  # Exit with error if transfer failed
+  if [ "$TRANSFER_SUCCESS" != "true" ]; then
+    echo "::error::Failed to transfer files after 3 attempts"
+    exit 1
+  fi
   
   # Extract statistics
   TRANSFERRED_FILES=$(grep "Number of files transferred" "$STATS_FILE" | awk '{print $5}' || echo "0")
@@ -120,22 +159,33 @@ else
   SCP_CMD="scp $SCP_OPTIONS $OPTIONS -r $SOURCE $USERNAME@$HOST:$DESTINATION"
   echo "Running: $SCP_CMD"
   
-  # Run scp with simple retry logic
+  # Run scp with simple retry logic and proper error handling
+  TRANSFER_SUCCESS=false
   for i in {1..3}; do
     echo "Attempt $i of 3"
-    eval "$SCP_CMD" && {
+    eval "$SCP_CMD"
+    SCP_EXIT_CODE=$?
+    
+    if [ $SCP_EXIT_CODE -eq 0 ]; then
       echo "Transfer successful!"
+      TRANSFER_SUCCESS=true
       break
-    } || {
-      echo "Transfer attempt $i failed"
+    else
+      echo "Transfer attempt $i failed with exit code $SCP_EXIT_CODE"
       if [ $i -lt 3 ]; then
         echo "Retrying in 3 seconds..."
         sleep 3
       else
         echo "All retry attempts failed."
       fi
-    }
+    fi
   done
+  
+  # Exit with error if transfer failed
+  if [ "$TRANSFER_SUCCESS" != "true" ]; then
+    echo "::error::Failed to transfer files after 3 attempts"
+    exit 1
+  fi
   
   # Since scp doesn't provide statistics, we'll estimate
   TRANSFERRED_FILES="1"
@@ -158,7 +208,7 @@ if [ -n "$POST_COMMANDS" ]; then
   
   # Copy script to remote server
   echo "Copying command script to remote server"
-  scp $SSH_OPTIONS "$REMOTE_SCRIPT" "$USERNAME@$HOST:/tmp/remote_commands.sh" || {
+  scp -P $PORT -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 "$REMOTE_SCRIPT" "$USERNAME@$HOST:/tmp/remote_commands.sh" || {
     echo "Failed to copy script to remote server"
     cat "$REMOTE_SCRIPT"
     echo "Will try to run commands directly"
