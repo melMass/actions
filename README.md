@@ -72,16 +72,50 @@ with:
   nu-version: "*"  # Optional: defaults to latest stable
 ```
 
-### Sync Fork (`@sync-fork`)
+### Sync Fork with Upstream (`@sync-fork`)
 
-Automatically syncs a fork with its upstream repository and manages the pull request.
+Automatically syncs a forked repository with its upstream repository and manages the pull request process.
+
+**How it works:**
+1. Syncs your fork with the upstream repository using GitHub's `mergeUpstream` API
+2. If a PR already exists for the branch, adds a comment with update information
+3. If no PR exists, creates a new PR to track the changes
+
+**Perfect for:**
+- Maintaining forks of actively developed repositories
+- Keeping your fork in sync with the original repository
+- Automating the tedious process of syncing forks
 
 ```yml
 uses: melMass/actions@sync-fork
 with:
-  repo-token: ${{ secrets.GITHUB_TOKEN }}  # Required
-  feature-branch: "main"  # Required: branch in the fork to update
+  repo-token: ${{ secrets.GITHUB_TOKEN }}  # Required: GitHub token with repo access
+  feature-branch: "main"  # Required: branch in your fork to update
   upstream-branch: "main"  # Required: upstream branch to sync from
+```
+
+**Example workflow (scheduled sync):**
+```yml
+name: Sync Fork with Upstream
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at midnight
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Sync fork with upstream
+        uses: melMass/actions@sync-fork
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          feature-branch: "main"
+          upstream-branch: "main"
 ```
 
 ### Deploy to IPFS (`@ipfs`) - Deprecated
