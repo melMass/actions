@@ -3,7 +3,7 @@ name: Test Summary Action
 on:
   workflow_dispatch:
   workflow_run:
-    workflows: [Build]
+    workflows: [Build Summary]
     types:
       - completed
     branches:
