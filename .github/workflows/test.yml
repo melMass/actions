@@ -2,13 +2,17 @@ name: Test Summary Action
 
 on:
   workflow_dispatch:
-  push:
+  workflow_run:
+    workflows: [Build]
+    types:
+      - completed
     branches:
       - summary
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

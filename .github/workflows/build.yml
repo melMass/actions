@@ -11,9 +11,12 @@ on:
       - summary
     paths-ignore:
       - '**.md'
+  workflow_dispatch:
 
 jobs:
   build:
+    outputs:
+      build_id: ${{ github.run_id }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
