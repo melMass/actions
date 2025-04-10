@@ -5,7 +5,7 @@ async function run() {
   try {
     const token = core.getInput("repo-token", { required: true });
     const upstreamBranch = core.getInput("upstream-branch", { required: true });
-    const targetBranch = core.getInput("target-branch", { required: true });
+    const targetBranch = core.getInput("feature-branch", { required: true });
 
     const octokit = github.getOctokit(token);
     const { owner, repo } = github.context.repo;
