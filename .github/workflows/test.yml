@@ -30,31 +30,7 @@ jobs:
       - name: Verify disk space
         run: df -h /
         
-      - name: Debug outputs
-        run: |
-          echo "DEBUG: Checking free-space action outputs"
-          echo "Using outputs:"
-          echo "initial-space: '${{ steps.free-space.outputs.initial-space }}'"
-          echo "final-space: '${{ steps.free-space.outputs.final-space }}'"
-          echo "space-freed-kb: '${{ steps.free-space.outputs.space-freed-kb }}'"
-          echo "space-freed-mb: '${{ steps.free-space.outputs.space-freed-mb }}'"
-          echo "space-freed-gb: '${{ steps.free-space.outputs.space-freed-gb }}'"
-          
-          echo "\nUsing environment variables:"
-          echo "INITIAL_SPACE: '$INITIAL_SPACE'"
-          echo "FINAL_SPACE: '$FINAL_SPACE'"
-          echo "SPACE_FREED_KB: '$SPACE_FREED_KB'"
-          echo "SPACE_FREED_MB: '$SPACE_FREED_MB'"
-          echo "SPACE_FREED_GB: '$SPACE_FREED_GB'"
-          
-          # Check if outputs are empty but env vars are set
-          if [ -z "${{ steps.free-space.outputs.initial-space }}" ] && [ ! -z "$INITIAL_SPACE" ]; then
-            echo "NOTE: Using environment variables instead of outputs"
-          fi
-          
-          # Debug environment variables
-          echo "\nAll environment variables:"
-          env | sort
+
         
       - name: Create workflow summary
         uses: melmass/actions@summary
@@ -78,12 +54,4 @@ jobs:
               "space_freed_mb": "${{ steps.free-space.outputs.space-freed-mb }}"
             }
             
-      - name: Debug summary variables
-        run: |
-          echo "DEBUG: Summary variables JSON:"
-          echo '{
-            "initial_space": "${{ steps.free-space.outputs.initial-space }}",
-            "final_space": "${{ steps.free-space.outputs.final-space }}",
-            "space_freed_gb": "${{ steps.free-space.outputs.space-freed-gb }}",
-            "space_freed_mb": "${{ steps.free-space.outputs.space-freed-mb }}"
-          }'
+

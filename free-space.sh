@@ -164,20 +164,11 @@ else
 fi
 
 # Set outputs using the GitHub Actions output syntax
-echo "DEBUG: Setting outputs for the action"
 echo "space-freed-kb=$SAVED_KB" >> $GITHUB_OUTPUT
 echo "space-freed-mb=$SAVED_MB" >> $GITHUB_OUTPUT
 echo "space-freed-gb=$SAVED_GB" >> $GITHUB_OUTPUT
 echo "initial-space=$INITIAL_SPACE" >> $GITHUB_OUTPUT
 echo "final-space=$FINAL_SPACE" >> $GITHUB_OUTPUT
-
-# Debug outputs
-echo "DEBUG: Outputs set:"
-echo "- space-freed-kb=$SAVED_KB"
-echo "- space-freed-mb=$SAVED_MB"
-echo "- space-freed-gb=$SAVED_GB"
-echo "- initial-space=$INITIAL_SPACE"
-echo "- final-space=$FINAL_SPACE"
 
 # Print summary
 echo "=============================================================================="

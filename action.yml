@@ -91,8 +91,6 @@ runs:
       shell: bash
       run: |
         # Get the values from the script's step
-        # In composite actions, each step has its own output file
-        # We need to extract the values from the free-space.sh step
         SPACE_FREED_KB=$(cat $GITHUB_OUTPUT | grep "^space-freed-kb=" | cut -d= -f2 || echo "")
         SPACE_FREED_MB=$(cat $GITHUB_OUTPUT | grep "^space-freed-mb=" | cut -d= -f2 || echo "")
         SPACE_FREED_GB=$(cat $GITHUB_OUTPUT | grep "^space-freed-gb=" | cut -d= -f2 || echo "")
@@ -105,11 +103,4 @@ runs:
         echo "space-freed-gb=$SPACE_FREED_GB" >> $GITHUB_OUTPUT
         echo "initial-space=$INITIAL_SPACE" >> $GITHUB_OUTPUT
         echo "final-space=$FINAL_SPACE" >> $GITHUB_OUTPUT
-        
-        echo "DEBUG: Set outputs for the action:"
-        echo "- space-freed-kb: $SPACE_FREED_KB"
-        echo "- space-freed-mb: $SPACE_FREED_MB"
-        echo "- space-freed-gb: $SPACE_FREED_GB"
-        echo "- initial-space: $INITIAL_SPACE"
-        echo "- final-space: $FINAL_SPACE"
       id: outputs
