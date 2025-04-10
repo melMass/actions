@@ -1,18 +1,47 @@
-name: Test Summary Action
+name: Build and Test
 
 on:
-  workflow_dispatch:
-  workflow_run:
-    workflows: [Build Summary]
-    types:
-      - completed
+  push:
     branches:
       - summary
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    branches:
+      - summary
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
 
 jobs:
-  test_summary:
+  build:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build action
+        run: npm run build
+        
+      - name: Commit and push if changed
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: update dist files" && git push)
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,9 +53,6 @@ jobs:
           
       - name: Install dependencies
         run: npm ci
-        
-      - name: Build action
-        run: npm run build
         
       - name: Get current date
         id: date
