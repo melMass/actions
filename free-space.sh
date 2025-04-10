@@ -11,9 +11,14 @@ INITIAL_SPACE=$(df -h / | grep -v Filesystem | awk '{print $4}')
 INITIAL_SPACE_KB=$(df -k / | grep -v Filesystem | awk '{print $4}')
 echo "Available space: $INITIAL_SPACE"
 
-# List largest packages for information
-echo "Listing 100 largest packages"
-dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100 || echo "Could not list packages"
+# List largest packages for information (run in background)
+echo "Listing 100 largest packages (in background)"
+{
+  dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100 > /tmp/largest_packages.txt || echo "Could not list packages" > /tmp/largest_packages.txt
+  echo "\nLargest packages:" 
+  cat /tmp/largest_packages.txt
+} &
+PACKAGE_LISTING_PID=$!
 
 # Define package groups to remove based on inputs
 PACKAGES_TO_CHECK=()
@@ -33,17 +38,24 @@ if [ "$INPUT_REMOVE_MYSQL" = "true" ]; then
   PACKAGES_TO_CHECK+=("mysql")
 fi
 
-# Remove package groups
+# Remove package groups in parallel
 echo "Removing large package groups"
+PKGS_TO_REMOVE=()
 for pkg in "${PACKAGES_TO_CHECK[@]}"; do
   echo "Checking for packages matching ^$pkg.*"
   if apt list --installed 2>/dev/null | grep -q "^$pkg"; then
-    echo "Removing $pkg packages"
-    sudo apt-get remove -y "^$pkg.*" || echo "Some $pkg packages could not be removed"
+    echo "Found $pkg packages to remove"
+    PKGS_TO_REMOVE+=("^$pkg.*")
   else
     echo "No $pkg packages found"
   fi
 done
+
+# If we have packages to remove, do it in one batch
+if [ ${#PKGS_TO_REMOVE[@]} -gt 0 ]; then
+  echo "Removing ${#PKGS_TO_REMOVE[@]} package groups in one batch"
+  sudo apt-get remove -y ${PKGS_TO_REMOVE[@]} || echo "Some packages could not be removed"
+fi
 
 # Define individual packages to remove based on inputs
 INDIVIDUAL_PACKAGES=()
@@ -65,20 +77,33 @@ if [ -n "$INPUT_CUSTOM_PACKAGES" ]; then
   done
 fi
 
-# Remove individual packages
+# Remove individual packages in one batch
 echo "Removing individual packages"
+PKGS_TO_REMOVE=()
 for pkg in "${INDIVIDUAL_PACKAGES[@]}"; do
   if dpkg -l | grep -q "\b$pkg\b"; then
-    echo "Removing $pkg"
-    sudo apt-get remove -y "$pkg" || echo "Could not remove $pkg"
+    echo "Found package $pkg to remove"
+    PKGS_TO_REMOVE+=("$pkg")
   else
     echo "Package $pkg is not installed"
   fi
 done
 
-# Clean up
-sudo apt-get autoremove -y
-sudo apt-get clean
+# If we have packages to remove, do it in one batch
+if [ ${#PKGS_TO_REMOVE[@]} -gt 0 ]; then
+  echo "Removing ${#PKGS_TO_REMOVE[@]} individual packages in one batch"
+  sudo apt-get remove -y ${PKGS_TO_REMOVE[@]} || echo "Some packages could not be removed"
+fi
+
+# Clean up - run these in parallel
+echo "Running cleanup operations"
+{
+  sudo apt-get autoremove -y
+} &
+{
+  sudo apt-get clean
+} &
+wait
 
 # Define directories to remove based on inputs
 DIRECTORIES=()
@@ -114,22 +139,50 @@ if [ -n "$INPUT_CUSTOM_DIRECTORIES" ]; then
   done
 fi
 
-# Remove directories
+# Remove directories in parallel
 echo "Removing large directories"
-for dir in "${DIRECTORIES[@]}"; do
+remove_dir() {
+  local dir="$1"
   if [ -d "$dir" ]; then
     echo "Removing directory: $dir"
     sudo rm -rf "$dir"
+    return 0
   else
     echo "Directory does not exist: $dir"
+    return 1
   fi
+}
+
+# Use background processes with a maximum of 5 concurrent jobs
+MAX_JOBS=5
+active_jobs=0
+
+for dir in "${DIRECTORIES[@]}"; do
+  # Wait if we've reached the maximum number of concurrent jobs
+  if [ $active_jobs -ge $MAX_JOBS ]; then
+    wait -n
+    active_jobs=$((active_jobs - 1))
+  fi
+  
+  # Start a new background job
+  remove_dir "$dir" &
+  active_jobs=$((active_jobs + 1))
 done
+
+# Wait for all remaining jobs to complete
+wait
 
 # Record final disk space
 echo "Final disk space:"
 FINAL_SPACE=$(df -h / | grep -v Filesystem | awk '{print $4}')
 FINAL_SPACE_KB=$(df -k / | grep -v Filesystem | awk '{print $4}')
 echo "Available space: $FINAL_SPACE"
+
+# Wait for package listing to complete if it's still running
+if ps -p $PACKAGE_LISTING_PID > /dev/null 2>&1; then
+  echo "Waiting for package listing to complete..."
+  wait $PACKAGE_LISTING_PID
+fi
 
 # Calculate space saved
 echo "Calculating space saved..."

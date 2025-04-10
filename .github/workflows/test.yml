@@ -44,18 +44,10 @@ jobs:
             | 💾 Final Space | ${final_space} |
             | ✨ Space Freed | **${space_freed_gb} GB** (${space_freed_mb} MB) |
             
-            ## 📋 System Information
-            
-            ```
-            ${disk_info}
-            ```
-            
-            > This test was run on a GitHub-hosted Ubuntu runner using the free-space action.
           variables: |
             {
               "initial_space": "${{ steps.free-space.outputs.initial-space }}",
               "final_space": "${{ steps.free-space.outputs.final-space }}",
               "space_freed_gb": "${{ steps.free-space.outputs.space-freed-gb }}",
               "space_freed_mb": "${{ steps.free-space.outputs.space-freed-mb }}",
-              "disk_info": "$(df -h /)"
             }
