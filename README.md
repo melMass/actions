@@ -118,6 +118,27 @@ jobs:
           upstream-branch: "main"
 ```
 
+### Free Disk Space (`@free-space`)
+
+Frees up disk space on GitHub runners by removing unnecessary packages and directories. Perfect for workflows that require additional disk space, such as Docker image builds.
+
+```yml
+uses: melMass/actions@free-space
+with:
+  remove-dotnet: 'true'      # Optional: defaults to true
+  remove-llvm: 'true'        # Optional: defaults to true
+  remove-php: 'true'         # Optional: defaults to true
+  custom-packages: 'mono-devel libgl1-mesa-dri'  # Optional
+  custom-directories: '/opt/hostedtoolcache/CodeQL'  # Optional
+```
+
+**Outputs:**
+- `space-freed-kb`: Disk space freed in KB
+- `space-freed-mb`: Disk space freed in MB
+- `space-freed-gb`: Disk space freed in GB (with 2 decimal places)
+- `initial-space`: Initial available disk space
+- `final-space`: Final available disk space
+
 ### Deploy to IPFS (`@ipfs`) - Deprecated
 
 ~~Deploys a folder to IPFS and returns the CID.~~
