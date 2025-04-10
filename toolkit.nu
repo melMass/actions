@@ -16,6 +16,14 @@ export-env {
   mkdir $env.REPOS_ROOT
 }
 
+export def isPush []: nothing -> bool {
+  $env.GITHUB_EVENT_NAME == "push"
+}
+
+export def get-action-root [] {
+  $env.GITHUB_ACTION_PATH
+}
+
 # get a build root by name
 export def get-build-root [name: string] {
   $env.MTB_BUILD_ROOT | path join $name
