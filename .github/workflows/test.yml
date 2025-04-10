@@ -1,0 +1,94 @@
+name: Test Summary Action
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - summary
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build action
+        run: npm run build
+        
+      - name: Basic summary example
+        uses: ./
+        with:
+          content: |
+            # 🚀 Basic Summary Example
+            
+            This is a simple example of using the summary action with a multiline string.
+            
+            ## 📊 Statistics
+            
+            | Metric | Value |
+            | --- | --- |
+            | Repository | ${{ github.repository }} |
+            | Branch | ${{ github.ref_name }} |
+            | Commit | `${{ github.sha }}` |
+            
+            ✅ Action test completed!
+            
+      - name: Template example
+        uses: ./
+        with:
+          template: deployment
+          variables: '{
+            "repository": "${{ github.repository }}",
+            "branch": "${{ github.ref_name }}",
+            "commit": "${{ github.sha }}",
+            "date": "${{ github.event.head_commit.timestamp || '' }}",
+            "author": "${{ github.event.head_commit.author.name || github.actor }}",
+            "message": "${{ github.event.head_commit.message || '' }}",
+            "url": "https://example.com/deployment",
+            "timestamp": "${{ steps.date.outputs.date || '' }}"
+          }'
+          append: "true"
+          
+      - name: Conditional sections example
+        uses: ./
+        with:
+          content: |
+            # 🧪 Conditional Sections Example
+            
+            ## Summary
+            
+            This example demonstrates conditional sections.
+            
+            #if(${hasErrors})
+            ## ❌ Errors
+            
+            ${errors}
+            #endif
+            
+            #if(${hasWarnings})
+            ## ⚠️ Warnings
+            
+            ${warnings}
+            #endif
+            
+            #if(!${hasErrors} && !${hasWarnings})
+            ## ✅ All checks passed!
+            
+            No errors or warnings were found.
+            #endif
+          variables: '{
+            "hasErrors": false,
+            "hasWarnings": true,
+            "errors": "This would show error details if there were any.",
+            "warnings": "- Warning: This is a sample warning message.\n- Warning: Another sample warning."
+          }'
+          append: "true"

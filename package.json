@@ -1,0 +1,30 @@
+{
+  "name": "workflow-summary-action",
+  "version": "1.0.0",
+  "description": "Create beautiful GitHub workflow summaries with ease",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "ncc build src/index.js -o dist --source-map",
+    "test": "jest",
+    "lint": "eslint .",
+    "format": "prettier --write '**/*.js'"
+  },
+  "keywords": [
+    "github",
+    "actions",
+    "workflow",
+    "summary"
+  ],
+  "author": "melmass",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.0"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.38.3",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.2.5"
+  }
+}

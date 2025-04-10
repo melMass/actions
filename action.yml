@@ -1,0 +1,32 @@
+name: "Workflow Summary"
+description: "Create beautiful GitHub workflow summaries with ease"
+author: "melmass"
+
+inputs:
+  content:
+    description: "Markdown content for the summary (supports multiline strings and variable substitution)"
+    required: false
+  template:
+    description: "Pre-defined template to use (deployment, build, test)"
+    required: false
+  template-file:
+    description: "Path to a custom template file"
+    required: false
+  variables:
+    description: "JSON string of variables to substitute in the template"
+    required: false
+  append:
+    description: "Append to existing summary instead of creating a new one"
+    required: false
+    default: "false"
+  conditional-sections:
+    description: "JSON string of conditions for conditional sections"
+    required: false
+  style:
+    description: "Style preset to use (default, minimal, detailed)"
+    required: false
+    default: "default"
+
+runs:
+  using: "node20"
+  main: "dist/index.js"
