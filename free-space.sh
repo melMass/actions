@@ -163,37 +163,21 @@ else
   SAVED_GB="0.00"
 fi
 
-# Debug GitHub environment
-echo "DEBUG: GITHUB_OUTPUT environment variable: $GITHUB_OUTPUT"
-echo "DEBUG: GITHUB_ENV environment variable: $GITHUB_ENV"
-
-# Set both outputs and environment variables
-echo "DEBUG: Setting values for space-freed-kb=$SAVED_KB"
+# Set outputs using the GitHub Actions output syntax
+echo "DEBUG: Setting outputs for the action"
 echo "space-freed-kb=$SAVED_KB" >> $GITHUB_OUTPUT
-echo "SPACE_FREED_KB=$SAVED_KB" >> $GITHUB_ENV
-
-echo "DEBUG: Setting values for space-freed-mb=$SAVED_MB"
 echo "space-freed-mb=$SAVED_MB" >> $GITHUB_OUTPUT
-echo "SPACE_FREED_MB=$SAVED_MB" >> $GITHUB_ENV
-
-echo "DEBUG: Setting values for space-freed-gb=$SAVED_GB"
 echo "space-freed-gb=$SAVED_GB" >> $GITHUB_OUTPUT
-echo "SPACE_FREED_GB=$SAVED_GB" >> $GITHUB_ENV
-
-echo "DEBUG: Setting values for initial-space=$INITIAL_SPACE"
 echo "initial-space=$INITIAL_SPACE" >> $GITHUB_OUTPUT
-echo "INITIAL_SPACE=$INITIAL_SPACE" >> $GITHUB_ENV
-
-echo "DEBUG: Setting values for final-space=$FINAL_SPACE"
 echo "final-space=$FINAL_SPACE" >> $GITHUB_OUTPUT
-echo "FINAL_SPACE=$FINAL_SPACE" >> $GITHUB_ENV
 
-# Verify outputs and env variables were written
-echo "DEBUG: Contents of GITHUB_OUTPUT after setting values:"
-cat "$GITHUB_OUTPUT" || echo "Could not read GITHUB_OUTPUT file"
-
-echo "DEBUG: Contents of GITHUB_ENV after setting values:"
-cat "$GITHUB_ENV" || echo "Could not read GITHUB_ENV file"
+# Debug outputs
+echo "DEBUG: Outputs set:"
+echo "- space-freed-kb=$SAVED_KB"
+echo "- space-freed-mb=$SAVED_MB"
+echo "- space-freed-gb=$SAVED_GB"
+echo "- initial-space=$INITIAL_SPACE"
+echo "- final-space=$FINAL_SPACE"
 
 # Print summary
 echo "=============================================================================="

@@ -52,18 +52,24 @@ inputs:
 outputs:
   space-freed-kb:
     description: "Disk space freed in KB"
+    value: ${{ steps.run-script.outputs.space-freed-kb }}
   space-freed-mb:
     description: "Disk space freed in MB"
+    value: ${{ steps.run-script.outputs.space-freed-mb }}
   space-freed-gb:
     description: "Disk space freed in GB (with 2 decimal places)"
+    value: ${{ steps.run-script.outputs.space-freed-gb }}
   initial-space:
     description: "Initial available disk space"
+    value: ${{ steps.run-script.outputs.initial-space }}
   final-space:
     description: "Final available disk space"
+    value: ${{ steps.run-script.outputs.final-space }}
 runs:
   using: "composite"
   steps:
     - name: Free up disk space
+      id: run-script
       shell: bash
       run: ${{ github.action_path }}/free-space.sh
       env:
@@ -80,29 +86,30 @@ runs:
         INPUT_CUSTOM_PACKAGES: ${{ inputs.custom-packages }}
         INPUT_CUSTOM_DIRECTORIES: ${{ inputs.custom-directories }}
     
-    # Set outputs directly
+    # Set outputs for the action
     - name: Set action outputs
       shell: bash
       run: |
-        # Get values from the script output
-        SPACE_FREED_KB=$(cat $GITHUB_OUTPUT | grep "space-freed-kb=" | cut -d= -f2)
-        SPACE_FREED_MB=$(cat $GITHUB_OUTPUT | grep "space-freed-mb=" | cut -d= -f2)
-        SPACE_FREED_GB=$(cat $GITHUB_OUTPUT | grep "space-freed-gb=" | cut -d= -f2)
-        INITIAL_SPACE=$(cat $GITHUB_OUTPUT | grep "initial-space=" | cut -d= -f2)
-        FINAL_SPACE=$(cat $GITHUB_OUTPUT | grep "final-space=" | cut -d= -f2)
+        # Get the values from the script's step
+        # In composite actions, each step has its own output file
+        # We need to extract the values from the free-space.sh step
+        SPACE_FREED_KB=$(cat $GITHUB_OUTPUT | grep "^space-freed-kb=" | cut -d= -f2 || echo "")
+        SPACE_FREED_MB=$(cat $GITHUB_OUTPUT | grep "^space-freed-mb=" | cut -d= -f2 || echo "")
+        SPACE_FREED_GB=$(cat $GITHUB_OUTPUT | grep "^space-freed-gb=" | cut -d= -f2 || echo "")
+        INITIAL_SPACE=$(cat $GITHUB_OUTPUT | grep "^initial-space=" | cut -d= -f2 || echo "")
+        FINAL_SPACE=$(cat $GITHUB_OUTPUT | grep "^final-space=" | cut -d= -f2 || echo "")
         
-        # Debug values
-        echo "DEBUG: Values from script output:"
-        echo "SPACE_FREED_KB=$SPACE_FREED_KB"
-        echo "SPACE_FREED_MB=$SPACE_FREED_MB"
-        echo "SPACE_FREED_GB=$SPACE_FREED_GB"
-        echo "INITIAL_SPACE=$INITIAL_SPACE"
-        echo "FINAL_SPACE=$FINAL_SPACE"
-        
-        # Create a new output file for this step
+        # Set the outputs for this step
         echo "space-freed-kb=$SPACE_FREED_KB" >> $GITHUB_OUTPUT
         echo "space-freed-mb=$SPACE_FREED_MB" >> $GITHUB_OUTPUT
         echo "space-freed-gb=$SPACE_FREED_GB" >> $GITHUB_OUTPUT
         echo "initial-space=$INITIAL_SPACE" >> $GITHUB_OUTPUT
         echo "final-space=$FINAL_SPACE" >> $GITHUB_OUTPUT
+        
+        echo "DEBUG: Set outputs for the action:"
+        echo "- space-freed-kb: $SPACE_FREED_KB"
+        echo "- space-freed-mb: $SPACE_FREED_MB"
+        echo "- space-freed-gb: $SPACE_FREED_GB"
+        echo "- initial-space: $INITIAL_SPACE"
+        echo "- final-space: $FINAL_SPACE"
       id: outputs
