@@ -64,7 +64,6 @@ runs:
   using: "composite"
   steps:
     - name: Free up disk space
-      id: free-space-script
       shell: bash
       run: ${{ github.action_path }}/free-space.sh
       env:
@@ -81,13 +80,22 @@ runs:
         INPUT_CUSTOM_PACKAGES: ${{ inputs.custom-packages }}
         INPUT_CUSTOM_DIRECTORIES: ${{ inputs.custom-directories }}
     
-    # Set outputs from the script to the action's outputs
+    # Set outputs from environment variables
     - name: Set action outputs
       shell: bash
       run: |
-        echo "space-freed-kb=${{ steps.free-space-script.outputs.space-freed-kb }}" >> $GITHUB_OUTPUT
-        echo "space-freed-mb=${{ steps.free-space-script.outputs.space-freed-mb }}" >> $GITHUB_OUTPUT
-        echo "space-freed-gb=${{ steps.free-space-script.outputs.space-freed-gb }}" >> $GITHUB_OUTPUT
-        echo "initial-space=${{ steps.free-space-script.outputs.initial-space }}" >> $GITHUB_OUTPUT
-        echo "final-space=${{ steps.free-space-script.outputs.final-space }}" >> $GITHUB_OUTPUT
+        echo "DEBUG: Setting outputs from environment variables"
+        echo "space-freed-kb=$SPACE_FREED_KB" >> $GITHUB_OUTPUT
+        echo "space-freed-mb=$SPACE_FREED_MB" >> $GITHUB_OUTPUT
+        echo "space-freed-gb=$SPACE_FREED_GB" >> $GITHUB_OUTPUT
+        echo "initial-space=$INITIAL_SPACE" >> $GITHUB_OUTPUT
+        echo "final-space=$FINAL_SPACE" >> $GITHUB_OUTPUT
+        
+        # Debug output
+        echo "DEBUG: Final outputs set:"
+        echo "space-freed-kb=$SPACE_FREED_KB"
+        echo "space-freed-mb=$SPACE_FREED_MB"
+        echo "space-freed-gb=$SPACE_FREED_GB"
+        echo "initial-space=$INITIAL_SPACE"
+        echo "final-space=$FINAL_SPACE"
       id: outputs

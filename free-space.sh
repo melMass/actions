@@ -165,40 +165,35 @@ fi
 
 # Debug GitHub environment
 echo "DEBUG: GITHUB_OUTPUT environment variable: $GITHUB_OUTPUT"
-if [ -z "$GITHUB_OUTPUT" ]; then
-  echo "ERROR: GITHUB_OUTPUT is not set!"
-  # Fallback to the old way of setting outputs for older GitHub Actions runners
-  GITHUB_OUTPUT="${GITHUB_OUTPUT:-${GITHUB_ENV}}"
-  echo "Using fallback: $GITHUB_OUTPUT"
-fi
+echo "DEBUG: GITHUB_ENV environment variable: $GITHUB_ENV"
 
-# Verify the file exists and is writable
-if [ ! -f "$GITHUB_OUTPUT" ]; then
-  echo "ERROR: GITHUB_OUTPUT file does not exist: $GITHUB_OUTPUT"
-else
-  echo "DEBUG: GITHUB_OUTPUT file exists"
-  ls -la "$GITHUB_OUTPUT"
-fi
-
-# Set outputs with debugging
-echo "DEBUG: Setting output space-freed-kb=$SAVED_KB"
+# Set both outputs and environment variables
+echo "DEBUG: Setting values for space-freed-kb=$SAVED_KB"
 echo "space-freed-kb=$SAVED_KB" >> $GITHUB_OUTPUT
+echo "SPACE_FREED_KB=$SAVED_KB" >> $GITHUB_ENV
 
-echo "DEBUG: Setting output space-freed-mb=$SAVED_MB"
+echo "DEBUG: Setting values for space-freed-mb=$SAVED_MB"
 echo "space-freed-mb=$SAVED_MB" >> $GITHUB_OUTPUT
+echo "SPACE_FREED_MB=$SAVED_MB" >> $GITHUB_ENV
 
-echo "DEBUG: Setting output space-freed-gb=$SAVED_GB"
+echo "DEBUG: Setting values for space-freed-gb=$SAVED_GB"
 echo "space-freed-gb=$SAVED_GB" >> $GITHUB_OUTPUT
+echo "SPACE_FREED_GB=$SAVED_GB" >> $GITHUB_ENV
 
-echo "DEBUG: Setting output initial-space=$INITIAL_SPACE"
+echo "DEBUG: Setting values for initial-space=$INITIAL_SPACE"
 echo "initial-space=$INITIAL_SPACE" >> $GITHUB_OUTPUT
+echo "INITIAL_SPACE=$INITIAL_SPACE" >> $GITHUB_ENV
 
-echo "DEBUG: Setting output final-space=$FINAL_SPACE"
+echo "DEBUG: Setting values for final-space=$FINAL_SPACE"
 echo "final-space=$FINAL_SPACE" >> $GITHUB_OUTPUT
+echo "FINAL_SPACE=$FINAL_SPACE" >> $GITHUB_ENV
 
-# Verify outputs were written
+# Verify outputs and env variables were written
 echo "DEBUG: Contents of GITHUB_OUTPUT after setting values:"
 cat "$GITHUB_OUTPUT" || echo "Could not read GITHUB_OUTPUT file"
+
+echo "DEBUG: Contents of GITHUB_ENV after setting values:"
+cat "$GITHUB_ENV" || echo "Could not read GITHUB_ENV file"
 
 # Print summary
 echo "=============================================================================="
