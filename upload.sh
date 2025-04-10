@@ -1,6 +1,7 @@
 #!/bin/bash
 
-set -e
+# Enable verbose output for debugging
+set -ex
 
 # Get inputs from environment variables
 HOST="${INPUT_HOST}"

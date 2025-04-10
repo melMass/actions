@@ -40,10 +40,36 @@ runs:
     - name: Set up SSH key
       shell: bash
       run: |
+        # Debug SSH directory
+        echo "Setting up SSH keys..."
+        ls -la ~ || true
+        
+        # Create SSH directory with proper permissions
         mkdir -p ~/.ssh
-        echo "${{ inputs.private-key }}" > ~/.ssh/id_rsa
+        chmod 700 ~/.ssh
+        
+        # Write private key with proper error handling
+        echo "Writing private key..."
+        # Ensure the key is properly formatted with newlines
+        echo "${{ inputs.private-key }}" | sed 's/\\n/\n/g' > ~/.ssh/id_rsa
+        # Check if the key looks valid
+        if ! grep -q "BEGIN" ~/.ssh/id_rsa; then
+          echo "WARNING: Private key doesn't contain 'BEGIN' line, it might be malformed"
+          echo "First few characters of the key:"
+          head -c 20 ~/.ssh/id_rsa
+        fi
+        
+        # Set proper permissions
+        echo "Setting permissions..."
         chmod 600 ~/.ssh/id_rsa
+        
+        # Add host to known hosts
+        echo "Adding host to known_hosts..."
         ssh-keyscan -p ${{ inputs.port }} -H ${{ inputs.host }} >> ~/.ssh/known_hosts
+        
+        # Verify setup
+        echo "Verifying SSH setup..."
+        ls -la ~/.ssh
       
     - name: Upload files
       id: upload
