@@ -1,0 +1,81 @@
+name: "Free Disk Space"
+description: "Frees up disk space on GitHub runners by removing unnecessary packages and directories"
+inputs:
+  remove-dotnet:
+    description: "Remove .NET packages and directories"
+    required: false
+    default: "true"
+  remove-llvm:
+    description: "Remove LLVM packages"
+    required: false
+    default: "true"
+  remove-php:
+    description: "Remove PHP packages"
+    required: false
+    default: "true"
+  remove-mongodb:
+    description: "Remove MongoDB packages"
+    required: false
+    default: "true"
+  remove-mysql:
+    description: "Remove MySQL packages"
+    required: false
+    default: "true"
+  remove-azure-cli:
+    description: "Remove Azure CLI"
+    required: false
+    default: "true"
+  remove-browsers:
+    description: "Remove Chrome and Firefox browsers"
+    required: false
+    default: "true"
+  remove-android:
+    description: "Remove Android SDK"
+    required: false
+    default: "true"
+  remove-haskell:
+    description: "Remove Haskell/GHC"
+    required: false
+    default: "true"
+  remove-powershell:
+    description: "Remove PowerShell"
+    required: false
+    default: "true"
+  custom-packages:
+    description: "Additional packages to remove (space-separated)"
+    required: false
+    default: ""
+  custom-directories:
+    description: "Additional directories to remove (space-separated, absolute paths)"
+    required: false
+    default: ""
+outputs:
+  space-freed-kb:
+    description: "Disk space freed in KB"
+  space-freed-mb:
+    description: "Disk space freed in MB"
+  space-freed-gb:
+    description: "Disk space freed in GB (with 2 decimal places)"
+  initial-space:
+    description: "Initial available disk space"
+  final-space:
+    description: "Final available disk space"
+runs:
+  using: "composite"
+  steps:
+    - name: Free up disk space
+      shell: bash
+      run: ${{ github.action_path }}/free-space.sh
+      env:
+        INPUT_REMOVE_DOTNET: ${{ inputs.remove-dotnet }}
+        INPUT_REMOVE_LLVM: ${{ inputs.remove-llvm }}
+        INPUT_REMOVE_PHP: ${{ inputs.remove-php }}
+        INPUT_REMOVE_MONGODB: ${{ inputs.remove-mongodb }}
+        INPUT_REMOVE_MYSQL: ${{ inputs.remove-mysql }}
+        INPUT_REMOVE_AZURE_CLI: ${{ inputs.remove-azure-cli }}
+        INPUT_REMOVE_BROWSERS: ${{ inputs.remove-browsers }}
+        INPUT_REMOVE_ANDROID: ${{ inputs.remove-android }}
+        INPUT_REMOVE_HASKELL: ${{ inputs.remove-haskell }}
+        INPUT_REMOVE_POWERSHELL: ${{ inputs.remove-powershell }}
+        INPUT_CUSTOM_PACKAGES: ${{ inputs.custom-packages }}
+        INPUT_CUSTOM_DIRECTORIES: ${{ inputs.custom-directories }}

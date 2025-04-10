@@ -1,0 +1,37 @@
+name: Test Free Space Action
+
+on:
+  push:
+    branches:
+      - free-space
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    branches:
+      - free-space
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Show initial disk space
+        run: df -h /
+        
+      - name: Test free space action
+        id: free-space
+        uses: ./
+        
+      - name: Show results
+        run: |
+          echo "Space freed: ${{ steps.free-space.outputs.space-freed-gb }} GB"
+          echo "Initial space: ${{ steps.free-space.outputs.initial-space }}"
+          echo "Final space: ${{ steps.free-space.outputs.final-space }}"
+          
+      - name: Verify disk space
+        run: df -h /
