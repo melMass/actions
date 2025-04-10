@@ -1,0 +1,84 @@
+name: Test Remote Upload Action
+
+on:
+  push:
+    branches:
+      - remote-upload
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    branches:
+      - remote-upload
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up test environment
+        run: |
+          # Create test files
+          mkdir -p test-files
+          echo "Test file 1" > test-files/file1.txt
+          echo "Test file 2" > test-files/file2.txt
+          mkdir -p test-files/nested
+          echo "Nested test file" > test-files/nested/file3.txt
+          
+          # Set up SSH server for testing (using Docker)
+          docker run -d --name ssh-server \
+            -p 2222:22 \
+            -e "SSH_USERS=tester:1000:1000" \
+            -e "SSH_ENABLE_PASSWORD_AUTH=true" \
+            -v $PWD/test-files:/home/tester/input \
+            linuxserver/openssh-server
+          
+          # Wait for SSH server to start
+          sleep 5
+          
+          # Generate SSH key for testing
+          ssh-keygen -t rsa -b 4096 -f ~/.ssh/test_key -N ""
+          
+          # Add public key to authorized_keys in container
+          docker exec ssh-server mkdir -p /home/tester/.ssh
+          cat ~/.ssh/test_key.pub | docker exec -i ssh-server bash -c "cat > /home/tester/.ssh/authorized_keys"
+          docker exec ssh-server chown -R tester:tester /home/tester/.ssh
+          docker exec ssh-server chmod 700 /home/tester/.ssh
+          docker exec ssh-server chmod 600 /home/tester/.ssh/authorized_keys
+          
+          # Create destination directory
+          docker exec ssh-server mkdir -p /home/tester/output
+          docker exec ssh-server chown -R tester:tester /home/tester/output
+      
+      - name: Test upload with rsync
+        uses: ./
+        with:
+          host: localhost
+          port: 2222
+          username: tester
+          private-key: ${{ secrets.TEST_SSH_KEY || cat ~/.ssh/test_key }}
+          source: ./test-files/
+          destination: /home/tester/output/
+          rsync: true
+          options: "--exclude=*.bak"
+          post-commands: "ls -la /home/tester/output; echo 'Test completed' > /home/tester/output/completed.txt"
+      
+      - name: Verify upload
+        run: |
+          # Check if files were uploaded
+          docker exec ssh-server ls -la /home/tester/output/
+          
+          # Verify file contents
+          docker exec ssh-server cat /home/tester/output/file1.txt
+          docker exec ssh-server cat /home/tester/output/nested/file3.txt
+          docker exec ssh-server cat /home/tester/output/completed.txt
+      
+      - name: Clean up
+        if: always()
+        run: |
+          docker stop ssh-server
+          docker rm ssh-server

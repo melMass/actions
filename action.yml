@@ -1,0 +1,76 @@
+name: "Remote Upload"
+description: "Upload files to a remote server via SSH/SCP"
+
+inputs:
+  host:
+    description: "Remote server hostname or IP address"
+    required: true
+  username:
+    description: "SSH username"
+    required: true
+  private-key:
+    description: "SSH private key for authentication (use GitHub secrets)"
+    required: true
+  source:
+    description: "Source path (local files to upload)"
+    required: true
+  destination:
+    description: "Destination path on the remote server"
+    required: true
+  port:
+    description: "SSH port number"
+    required: false
+    default: "22"
+  rsync:
+    description: "Use rsync instead of scp (more efficient for large transfers)"
+    required: false
+    default: "true"
+  options:
+    description: "Additional options for rsync/scp"
+    required: false
+    default: ""
+  post-commands:
+    description: "Commands to execute on the remote server after upload (semicolon-separated)"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up SSH key
+      shell: bash
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ inputs.private-key }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -p ${{ inputs.port }} -H ${{ inputs.host }} >> ~/.ssh/known_hosts
+      
+    - name: Upload files
+      id: upload
+      shell: bash
+      run: ${{ github.action_path }}/upload.sh
+      env:
+        INPUT_HOST: ${{ inputs.host }}
+        INPUT_USERNAME: ${{ inputs.username }}
+        INPUT_PORT: ${{ inputs.port }}
+        INPUT_SOURCE: ${{ inputs.source }}
+        INPUT_DESTINATION: ${{ inputs.destination }}
+        INPUT_RSYNC: ${{ inputs.rsync }}
+        INPUT_OPTIONS: ${{ inputs.options }}
+        INPUT_POST_COMMANDS: ${{ inputs.post-commands }}
+
+    - name: Clean up SSH key
+      if: always()
+      shell: bash
+      run: rm -f ~/.ssh/id_rsa
+
+outputs:
+  status:
+    description: "Upload status (success/failure)"
+    value: ${{ steps.upload.outputs.status }}
+  transferred-files:
+    description: "Number of files transferred"
+    value: ${{ steps.upload.outputs.transferred-files }}
+  transferred-bytes:
+    description: "Number of bytes transferred"
+    value: ${{ steps.upload.outputs.transferred-bytes }}
